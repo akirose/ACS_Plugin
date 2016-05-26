@@ -1,0 +1,13 @@
+{
+    "name": "AC_UDP_PLUGIN",
+    "description": "Assetto Corsa UDP Plugin",
+    "version": "0.0.1",
+    "private": true,
+    "main": "server.js",
+    "dependencies": {
+        "bluebird": "3.4.0",
+        "promise-queue": "2.2.3",
+        "buffer-reader": "0.1.0",
+        "lowdb": "0.12.5"
+    }
+}
