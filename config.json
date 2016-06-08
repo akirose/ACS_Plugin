@@ -1,10 +1,22 @@
-{
-	"server_host" : "localhost",
-	"server_port" : 11000,
-	"server_admin_password" : "accc_manager",
-	"listen_port" : 12000,
-	"welcome_message" : [
-			"Welcome to ACCC!!",
-			"http://cafe.naver.com/assettocorsa"
-		]
-}
+[
+	{
+		"server_host" : "localhost",
+		"server_port" : 11000,
+		"server_admin_password" : "accc_manager",
+		"listen_port" : 12000,
+		"welcome_message" : [
+				"Welcome to ACCC!!",
+				"http://cafe.naver.com/assettocorsa"
+			]
+	},
+	{
+		"server_host" : "localhost",
+		"server_port" : 11001,
+		"server_admin_password" : "accc_manager",
+		"listen_port" : 12001,
+		"welcome_message" : [
+				"Welcome to ACCC!!",
+				"http://cafe.naver.com/assettocorsa"
+			]
+	}
+]
