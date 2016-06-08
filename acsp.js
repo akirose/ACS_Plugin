@@ -1,10 +1,14 @@
 const dgram = require('dgram');
+const Iconv = require('iconv').Iconv;
 const EventEmitter = require('events').EventEmitter;
 const BufferReader = require('buffer-reader');
 const util = require('util');
 const Promise = require('bluebird');
 const PromiseQueue = require('promise-queue');
 PromiseQueue.configure(Promise);
+
+const encoder = new Iconv('UTF-8', 'UTF-32LE');
+const decoder = new Iconv('UTF-32LE', 'UTF-8');
 
 function ACSP(options) {
 	var self = this;
@@ -168,7 +172,7 @@ ACSP.prototype.sendChat = function(car_id, message) {
 ACSP.prototype.broadcastChat = function(message) {
 	var strBuf = this.writeStringW(message);
 	var buf = Buffer.alloc(strBuf.length + 1);
-	buf.writeUInt8(ACSP.SEND_CHAT, 0);
+	buf.writeUInt8(ACSP.BROADCAST_CHAT, 0);
 	strBuf.copy(buf, 1);
 
 	return this._send(buf);
@@ -285,7 +289,7 @@ ACSP.prototype._handleMessage = function(buf, rinfo) {
 				lapinfo.leaderboard.push({
 					rcar_id: buf.nextUInt8(),
 					rtime: buf.nextUInt32LE(),
-					rlaps: buf.nextUint8()
+					rlaps: buf.nextUInt8()
 				});
 			}
 			lapinfo.grip_level = buf.nextFloatLE();
@@ -328,14 +332,6 @@ ACSP.prototype._handleMessage = function(buf, rinfo) {
 			client_event.world_pos = this.readVector3f(buf);
 			client_event.rel_pos = this.readVector3f(buf);
 
-			/*
-			Object.assign(client_event, { 
-				speed: buf.nextFloatLE(),
-				world_pos: this.readVector3f(buf),
-				rel_pos: this.readVector3f(buf)
-			});
-			*/
-
 			this.emit('client_event', client_event);
 			if(client_event.ev_type == ACSP.CE_COLLISION_WITH_ENV) {
 				this.emit('collision_with_env', client_event);
@@ -361,7 +357,7 @@ ACSP.prototype.writeStringW = function(str) {
     
     if (str.length > 0) {
         // Hacky method that ignores half the UTF-32 space
-        buf.write(str.split('').join('\u0000') + '\u0000', 1, str.length * 4, 'utf-16le');
+        encoder.convert(str).copy(buf, 1, 0);
     }
 
     return buf;
@@ -378,7 +374,8 @@ ACSP.prototype.readStringW = function(buf) {
 	var length = buf.nextUInt8();
 	var strBuf = buf.nextBuffer(length*4);
 
-	return strBuf.toString('utf-16le').replace(/\u0000/gi, '');
+	//return strBuf.toString('utf-16le').replace(/\u0000/gi, '');
+	return decoder.convert(strBuf).toString();
 }
 
 ACSP.prototype.readVector3f = function (buf){
