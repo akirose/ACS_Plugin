@@ -1,0 +1,98 @@
+<%- contentFor('head') %>
+<script type="text/javascript">
+	$(document).ready(function() {
+		var plugin_setup_template = $("#plugin_setup_form > .panel").clone();
+		$("#plugin_add_btn").click(function(e) {
+			$("#plugin_setup_form").append(plugin_setup_template);
+		});
+		$("#plugin_remove_btn").click(function(e) {
+			if($("#plugin_setup_form > div").size() > 1) {
+				$("#plugin_setup_form > div:last").remove();
+			} else {
+				$("div#alert_plugin_remove").modal();
+			}
+		});
+	});
+</script>
+<%- contentFor('body') %>
+<div class="panel panel-default">
+	<div class="panel-heading">Event Setup</div>
+	<div class="panel-body">
+		<form class="form-default">
+			<div class="form-group">
+				<label for="title" class="control-label">Event Title</label>
+				<input type="text" id="title" class="form-control" placeholder="Event Title" />
+			</div>
+			<div class="form-group">
+				<label for="welcome_message" class="control-label">Welcome Message</label>
+				<textarea id="welcome_message" rows="4" class="form-control"></textarea>
+			</div>
+		</form>
+	</div>
+</div>
+<div class="panel panel-default">
+	<div class="panel-heading">
+		<div class="row">
+			<div class="col-xs-9 col-md-10">Plug-in Setup</div>
+			<div class="col-xs-3 col-md-2 text-right">
+				<button id="plugin_add_btn" type="button" class="btn btn-default btn-xs">
+					<span class="glyphicon glyphicon-plus" aria-hidden="true"></span>
+				</button>
+				<button id="plugin_remove_btn" type="button" class="btn btn-default btn-xs">
+					<span class="glyphicon glyphicon-minus" aria-hidden="true"></span>
+				</button>
+			</div>
+		</div>
+	</div>
+	<div class="panel-body">
+		<form id="plugin_setup_form" class="form-horizontal" role="form">
+			<div class="panel panel-default">
+				<div class="panel-body">
+						<div class="row">
+							<label class="col-md-2 control-label" for="server_host">Server Host</label>
+							<div class="form-group col-md-5">
+								<div class="col-md-8">
+									<input type="text" id="server_host" class="form-control" placeholder="AC Server Host" />
+								</div>
+							</div>
+							<div class="form-group col-xs-7 col-md-5">
+								<label class="col-md-3 control-label" for="server_port">Server Port</label>
+								<div class="col-md-6">
+									<input type="text" id="server_port" class="form-control" placeholder="AC Server Port" />
+								</div>
+							</div>
+						</div>
+						<div class="row">
+							<label class="col-md-2 control-label" for="listen_port">Listen Port</label>
+							<div class="form-group col-md-10">
+								<div class="col-xs-6 col-md-3">
+									<input type="text" id="listen_port" class="form-control" placeholder="Listen Port" />
+								</div>
+							</div>
+						</div>
+						<div class="row">
+							<label class="col-md-2 control-label" for="welcome_message">Welcome Message</label>
+							<div class="form-group col-md-10">
+								<div class="col-md-12">
+									<textarea id="welcome_message" rows="3" class="form-control"></textarea>
+								</div>
+							</div>
+						</div>
+				</div>
+			</div>
+		</form>
+	</div>
+</div>
+<div id="alert_plugin_remove" class="modal fade in" role="dialog">
+	<div class="modal-dialog">
+		<div class="modal-content">
+			<div class="modal-header">
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+				<h4>Alert</h4>
+			</div>
+			<div class="modal-body">
+				<p>At least one plug-in must be running.</p>
+			</div>
+		</div>
+	</div>
+</div>
