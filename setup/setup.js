@@ -19,4 +19,11 @@ app.get('/', function(req, res) {
 	res.render('index');
 });
 
+app.post('/write-setup', function(req, res) {
+	console.log(req.body);
+
+	
+	res.json({response:200});
+});
+
 module.exports = app;
