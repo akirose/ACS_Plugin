@@ -5,7 +5,7 @@ const fs = require('fs');
 global.config = JSON.parse(fs.readFileSync('config.json', 'utf8'));
 
 // Assetto Corsa Server Protocol
-var ac = acsp(config[process.argv[2]]);
+var ac = acsp(config.plugins[process.argv[2]]);
 ac.setMaxListeners(0);
 
 // ACCC Plug-in

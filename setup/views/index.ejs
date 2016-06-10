@@ -2,6 +2,20 @@
 <script type="text/javascript">
 	$(document).ready(function() {
 		var plugin_setup_template = $("#plugin_setup_form > fieldset > .panel").clone();
+
+		// load current config
+		$.ajax({
+			contentType: 'application/json',
+			data: $.toJSON(params),
+			dataType: 'json',
+			type: 'POST',
+			url: '/read-setup',
+			success: function(data) {
+			},
+			error: function() {
+			}
+		});
+
 		$("#plugin_add_btn").click(function(e) {
 			var template = plugin_setup_template.clone();
 			var size = $("#plugin_setup_form > fieldset > div").size();
@@ -20,18 +34,35 @@
 			}
 		});
 		$("#write_and_run_btn").click(function(e) {
+			var params = { };
+			var plugin_setup = [];
+			
+			// Serialize base setup
+			$.each($("#setup").serializeArray(), function(index) {
+				params[this.name] = this.value;
+			});
+
+			// Serialize plug-in setup
+			$("#plugin_setup_form > fieldset > div.panel").each(function(index, obj) {
+				var setup = {};
+				$.each($(obj).find(":input").serializeArray(), function(index) {
+					setup[this.name] = this.value;
+				});
+				plugin_setup.push(setup);
+			});
+			params['plugins'] = plugin_setup;
+
 			$.ajax({
 				contentType: 'application/json',
-				data: $.toJSON({ request: 200 }),
+				data: $.toJSON(params),
 				dataType: 'json',
 				type: 'POST',
 				url: '/write-setup',
 				success: function(data) {
-					console.log("success");
 				},
 				error: function() {
 				}
-			})
+			});
 		});
 	});
 </script>
@@ -39,15 +70,15 @@
 <div class="panel panel-default">
 	<div class="panel-heading">Event Setup</div>
 	<div class="panel-body">
-		<form class="form-default">
+		<form id="setup" class="form-default">
 			<fieldset>
 				<div class="form-group">
-					<label for="title" class="control-label">Event Title</label>
-					<input type="text" id="title" class="form-control" />
+					<label for="event_title" class="control-label">Event Title</label>
+					<input type="text" id="event_title" name="event_title" class="form-control" />
 				</div>
 				<div class="form-group">
 					<label for="welcome_message" class="control-label">Welcome Message</label>
-					<textarea id="welcome_message" rows="4" class="form-control"></textarea>
+					<textarea id="welcome_message" name="welcome_message" rows="4" class="form-control"></textarea>
 				</div>
 			</fieldset>
 		</form>
@@ -76,13 +107,13 @@
 								<label class="col-md-2 control-label" for="server_host">Server Host</label>
 								<div class="form-group col-md-5">
 									<div class="col-md-8">
-										<input type="text" id="server_host" class="form-control" value="localhost" />
+										<input type="text" id="server_host" name="server_host" class="form-control" value="localhost" />
 									</div>
 								</div>
 								<div class="form-group col-xs-7 col-md-5">
 									<label class="col-md-3 control-label" for="server_port">Server Port</label>
 									<div class="col-md-6">
-										<input type="text" id="server_port" class="form-control" value="11000" />
+										<input type="text" id="server_port" name="server_port" class="form-control" value="11000" />
 									</div>
 								</div>
 							</div>
@@ -90,7 +121,7 @@
 								<label class="col-md-2 control-label" for="listen_port">Listen Port</label>
 								<div class="form-group col-md-10">
 									<div class="col-xs-6 col-md-3">
-										<input type="text" id="listen_port" class="form-control" value="12000" />
+										<input type="text" id="listen_port" name="listen_port" class="form-control" value="12000" />
 									</div>
 								</div>
 							</div>
@@ -98,7 +129,7 @@
 								<label class="col-md-2 control-label" for="welcome_message">Welcome Message</label>
 								<div class="form-group col-md-10">
 									<div class="col-md-12">
-										<textarea id="welcome_message" rows="3" class="form-control"></textarea>
+										<textarea id="welcome_message" name="welcome_message" rows="3" class="form-control"></textarea>
 									</div>
 								</div>
 							</div>

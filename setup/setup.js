@@ -1,5 +1,7 @@
 const express = require('express')
-	, engine = require('express-ejs-layouts');
+	, engine = require('express-ejs-layouts')
+	, bodyParser = require('body-parser')
+	, fs = require('fs');
 
 /* Using expressjs framework */
 const app = express();
@@ -10,6 +12,10 @@ app.set('views', __dirname + '/views');
 app.set('layout', 'layout');
 app.use(engine);
 
+/* Use request body parser */
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true })); 
+
 /* Define Static Files Path */
 app.use('/images', express.static(__dirname + '/views/images'));
 app.use('/script', express.static(__dirname + '/views/script'));
@@ -19,10 +25,13 @@ app.get('/', function(req, res) {
 	res.render('index');
 });
 
-app.post('/write-setup', function(req, res) {
-	console.log(req.body);
+app.get('/read-setup', function(req, res) {
+	res.json(fs.readFileSync('config.json', 'utf8'));
+});
 
-	
+app.post('/write-setup', function(req, res) {
+	fs.writeFileSync('config.json', JSON.stringify(req.body, null, '\t'), 'utf8');
+
 	res.json({response:200});
 });
 

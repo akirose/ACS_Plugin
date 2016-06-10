@@ -13,7 +13,7 @@ setup.listen(3000, function() {
 	console.log("setup is running at port (3000)");
 });
 
-for(var i = 0; i < config.length; i++) {
+for(var i = 0; i < config.plugins.length; i++) {
 	child_process.fork("worker.js", [i])
 		.on('message', function(m, handle) {
 			console.log(m);
