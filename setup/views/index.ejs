@@ -88,9 +88,15 @@
 				dataType: 'json',
 				type: 'POST',
 				url: '/write-setup',
+				beforeSend: function() {
+					$("process_overlay").modal('show');
+				},
 				success: function(data) {
 				},
 				error: function() {
+				},
+				complete: function(xhr, status) {
+					$("process_overlay").modal('hide');
 				}
 			});
 		});
@@ -166,7 +172,7 @@
 	</div>
 </div>
 <div class="row text-center">
-	<button id="write" type="button" class="btn btn-primary btn-lg">Save</button>
+	<button id="write_btn" type="button" class="btn btn-primary btn-lg">Save</button>
 </div>
 <div id="alert_plugin_remove" class="modal fade in" role="dialog">
 	<div class="modal-dialog">

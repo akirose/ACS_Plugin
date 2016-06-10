@@ -1,8 +1,7 @@
 const _ = require('lodash');
-const low = require('lowdb');
-const storage = require('lowdb/file-sync');
-
-const db = low('data.json', {storage});
+const Promise = require('bluebird');
+const EventEmitter = require('events').EventEmitter;
+const util = require('util');
 
 var drivers = {};
 var current_session_info = {};
@@ -64,12 +63,10 @@ var plugin = function(acsp) {
 		},
 		/* New connection */
 		new_connection: function(car_info) {
-			const driver = db('drivers').find({ guid: car_info.driver_guid });
-			if(typeof driver === 'undefined') {
-				db('drivers').push({ name: car_info.driver_name, guid: car_info.driver_guid, ballast: 0 });
-			}
+			// Add Driver information to data.json on parent process.
+			process.send({ command: 'add_driver', data : { name: car_info.driver_name, guid: car_info.driver_guid }});
 
-			drivers[car_info.car_id] = driver_info;
+			drivers[car_info.car_id] = car_info;
 
 			console.log("** New Connection");
 			console.log(car_info);
@@ -78,12 +75,13 @@ var plugin = function(acsp) {
 		client_loaded: function(car_id) {
 			/* Send welcome message to private chat */
 			if(typeof global.config.welcome_message != 'undefined') {
-				for(var m in global.config.welcome_message) {
-					ac.sendChat(car_id, m);
+				for(var i in global.config.welcome_message) {
+					acsp.sendChat(car_id, global.config.welcome_message[i]);
 				}
 			}
 
-
+			/* handicap : weight(kg) - data.json */
+			self.ballast(car_id);
 		},
 		/* Connection closed */
 		connection_closed: function(car_info) {
@@ -101,22 +99,54 @@ var plugin = function(acsp) {
 	};
 }
 
-plugin.prototype.ballast=function() {
-	driver = drivers[car_id];
-	user = db('drivers').find({ guid: driver.driver_guid });
-	if(typeof user !== 'undefined') {
-		if(user.ballast > 0) {
-			ac.adminCommand("/ballast " + car_id + " " + user.ballast);
+// allow emit events
+util.inherits(plugin, EventEmitter);
+
+plugin.prototype.getDriverInfo = function(driver) {
+	var self = this;
+	var handler;
+
+	process.send({ command: 'driver_info', data: { name : driver.name, guid : driver.guid } });
+
+	return new Promise(function(resolve, reject) {
+		handler = function(driver_info) {
+			if(driver_info.guid === driver.guid) {
+				resolve(driver_info);
+				self.removeListener('driver_info', handler);
+			}
 		}
-	}
+
+		self.on('driver_info', handler);
+	}).timeout(1000).finally(function() {
+		self.removeListener('driver_info', handler);
+	});
+}
+
+plugin.prototype.ballast=function(car_id) {
+	var self = this;
+	var car_info = drivers[car_id];
+	this.getDriverInfo({ name: car_info.driver_name, guid: car_info.driver_guid }).then(function(driver_info) {
+		if(Number(driver_info.ballast) > 0) {
+			self.acsp.adminCommand("/ballast " + car_id + " " + driver_info.ballast);
+		}
+	}, function() {
+		console.log("Cannot get a driver info. (Driver : " + car_info.driver_name + ")");
+	});
 }
 
 plugin.prototype.init=function() {
 	var _handler = this._handler;
+	var self = this;
 
 	this.acsp.on('listening', _handler.listening);
 	this.acsp.on('version', _handler.version);
 	this.acsp.on('session_info', _handler.session_info);
+
+	process.on('message', function(msg) {
+		if(msg.command == 'driver_info') {
+			self.emit("driver_info", msg.data);
+		}
+	});
 
 	this._did_not_unbind = this.acsp.eventNames();
 }

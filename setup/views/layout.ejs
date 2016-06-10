@@ -12,6 +12,23 @@
 	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
 	<script src="script/jquery.json.min.js"></script>
 	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
+	<script type="text/javascript">
+		$(document).ready(function() {
+			$("#run_plugin_btn").click(function() {
+				$("#progress_overlay").modal('show');
+				$.get("/run-plugin", function() {
+					setTimeout(function() { $("#progress_overlay").modal('hide'); }, 800);
+				});
+			});
+
+			$("#stop_plugin_btn").click(function() {
+				$("#progress_overlay").modal('show');
+				$.get("/stop-plugin", function() {
+					setTimeout(function() { $("#progress_overlay").modal('hide'); }, 800);
+				});
+			});
+		});
+	</script>
 <%- head%>
 </head>
 
@@ -24,11 +41,11 @@
 		<div class="navbar-header pull-right">
 			<div class="nav pull-left">
 				<div class="btn-group" role="group">
-					<button type="button" class="btn btn-default btn-sm navbar-btn">
+					<button type="button" id="run_plugin_btn" class="btn btn-default btn-sm navbar-btn">
 						<span class="glyphicon glyphicon-play" aria-hidden="true"></span>
 						<span class="hidden-xs">실행</span>
 					</button>
-					<button type="button" class="btn btn-default btn-sm navbar-btn">
+					<button type="button" id="stop_plugin_btn" class="btn btn-default btn-sm navbar-btn">
 						<span class="glyphicon glyphicon-stop" aria-hidden="true"></span>
 						<span class="hidden-xs">중지</span>
 					</button>

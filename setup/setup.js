@@ -26,7 +26,12 @@ app.get('/', function(req, res) {
 });
 
 app.get('/read-setup', function(req, res) {
-	res.json(fs.readFileSync('config.json', 'utf8'));
+	var stat = fs.statSync('config.json');
+	if(stat.isFile()) {
+		res.json(fs.readFileSync('config.json', 'utf8'));
+	} else {
+		res.json({});
+	}
 });
 
 app.post('/write-setup', function(req, res) {
