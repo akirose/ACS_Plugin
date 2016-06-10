@@ -35,4 +35,16 @@ app.post('/write-setup', function(req, res) {
 	res.json({response:200});
 });
 
+app.get('/run-plugin', function(req, res) {
+	app.emit('run-plugin');
+
+	res.status(200).end();
+});
+
+app.get('/stop-plugin', function(req, res) {
+	app.emit('stop-plugin');
+
+	res.status(200).end();
+});
+
 module.exports = app;
