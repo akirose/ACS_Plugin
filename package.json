@@ -19,6 +19,7 @@
         "lowdb": "0.12.5",
         "lodash": "4.13.1",
         "iconv": "2.2.0",
+        "socket.io": "1.4.6",
         "express": "4.x",
         "ejs": "2.x.x",
         "express-ejs-layouts": "2.0.0",

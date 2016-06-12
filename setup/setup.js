@@ -1,10 +1,13 @@
 const express = require('express')
+	, app = express()
 	, engine = require('express-ejs-layouts')
 	, bodyParser = require('body-parser')
-	, fs = require('fs');
+	, fs = require('fs')
+	, server = require('http').createServer(app)
+	, io = require('socket.io').listen(server);
 
-/* Using expressjs framework */
-const app = express();
+app.server = server;
+app.io = io;
 
 /* Setup ejs template engine */
 app.set('view engine', 'ejs');
@@ -50,6 +53,14 @@ app.get('/stop-plugin', function(req, res) {
 	app.emit('stop-plugin');
 
 	res.status(200).end();
+});
+
+app.get('/monitor', function(req, res) {
+	res.render('monitor');
+});
+
+io.of('/monitor').on('connection', function(socket) {
+	app.emit("send-plugin", 0, { command: "get_current_session_info", id: socket.id });
 });
 
 module.exports = app;

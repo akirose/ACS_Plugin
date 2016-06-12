@@ -1,0 +1,12 @@
+<%- contentFor('head') %>
+<script src="/socket.io/socket.io.js"></script>
+<script type="text/javascript">
+	$(document).ready(function() {
+		var socket = io("/monitor");
+		socket.on('get_current_session_info', function(data) {
+			console.log(data);
+		});
+	});
+</script>
+
+<%- contentFor('body') %>

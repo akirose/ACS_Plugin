@@ -143,8 +143,19 @@ plugin.prototype.init=function() {
 	this.acsp.on('session_info', _handler.session_info);
 
 	process.on('message', function(msg) {
-		if(msg.command == 'driver_info') {
-			self.emit("driver_info", msg.data);
+		switch(msg.command) {
+			case "get_current_session_info":
+				process.send({ command: 'monitor', monitor_command: 'get_current_session_info', id: msg.id, data: current_session_info });
+			break;
+			case "get_list_clients":
+				process.send({ command: 'list_clients', data: drivers });
+			break;
+			case "driver_info":
+				self.emit("driver_info", msg.data);
+			break;
+			default:
+				console.log("Unknown command : " + msg.command);
+			break;
 		}
 	});
 
