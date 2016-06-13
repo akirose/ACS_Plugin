@@ -142,6 +142,19 @@ plugin.prototype.init=function() {
 	this.acsp.on('version', _handler.version);
 	this.acsp.on('session_info', _handler.session_info);
 
+	this._did_not_unbind = this.acsp.eventNames();
+}
+
+plugin.prototype.bind=function() {
+	var self = this;
+	var _handler = this._handler;
+
+	_(Object.keys(this._handler)).forEach(function(handler) {
+		if(!_.includes(self._did_not_unbind, handler)) {
+			self.acsp.on(handler, _handler[handler]);
+		}
+	});
+
 	process.on('message', function(msg) {
 		switch(msg.command) {
 			case "get_current_session_info":
@@ -156,19 +169,6 @@ plugin.prototype.init=function() {
 			default:
 				console.log("Unknown command : " + msg.command);
 			break;
-		}
-	});
-
-	this._did_not_unbind = this.acsp.eventNames();
-}
-
-plugin.prototype.bind=function() {
-	var self = this;
-	var _handler = this._handler;
-
-	_(Object.keys(this._handler)).forEach(function(handler) {
-		if(!_.includes(self._did_not_unbind, handler)) {
-			self.acsp.on(handler, _handler[handler]);
 		}
 	});
 }

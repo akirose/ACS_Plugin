@@ -30,8 +30,20 @@ setup.on('run-plugin', function() {
 	for(var i = 0; i < config.plugins.length; i++) {
 		var child = child_process.fork("plugin.js", [i]);
 		child.on('exit', function(code, signal) {
-			console.log("Stop ACS Plug-in (PID : " + this.pid + " )");
+			console.log("Stop ACS Plug-in (PID : " + this.pid + ", Code : " + code + ", Signal : " + signal + " )");
+
+			var plugin_keys = Object.keys(plugins);
+			for(var i = 0; i < plugin_keys.length; i++) {
+				if(plugins[plugin_keys[i]].process.pid === this.pid) {
+					delete plugins[plugin_keys[i]];
+					console.log("Remove Plug-in (PID : " + this.pid + ") in Running List.");
+					break;
+				}
+			}
+		}).on('error', function(error) {
+			console.log(error);
 		}).on('message', _handle_message);
+
 		plugins[i] = { index: i, process : child };
 	}
 }).on('stop-plugin', function() {
@@ -40,13 +52,21 @@ setup.on('run-plugin', function() {
 	for(var i = 0; i < plugin_keys.length; i++) {
 		var plugin = plugins[plugin_keys[i]];
 		plugin.process.kill('SIGTERM');
-
-		delete plugins[plugin_keys[i]];
 	}
 }).on('send-plugin', function(plugin_idx, msg) {
 	if(typeof plugins[plugin_idx] === 'object' && typeof msg === 'object' && typeof msg.command === 'string') { 
 		plugins[plugin_idx].process.send(msg);
 	}
+}).on('get-running-plugins', function(socketid) {
+	var arr = [];
+	var plugin_keys = Object.keys(plugins);
+	for(var i = 0; i < plugin_keys.length; i++) {
+		var plugin = plugins[plugin_keys[i]];
+
+		arr.push({ index: i, pid: plugin.process.pid });
+	}
+
+	setup.io.of("/monitor").to(socketid).emit('get_running_plugin_list', arr);
 });
 
 function _handle_message(msg) {
@@ -69,9 +89,7 @@ function _handle_message(msg) {
 				this.send({ command: 'driver_info', data: driver_info });
 			}
 		case "monitor":
-			console.log(msg);
 			setup.io.of("/monitor").to(msg.id).emit(msg.monitor_command, msg.data);
-			//setup.io.of("/monitor").emit(msg.monitor_command, msg.data);
 		break;
 	}
 }

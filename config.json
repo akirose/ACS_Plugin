@@ -7,6 +7,12 @@
 			"server_port": 11000,
 			"listen_port": 12000,
 			"welcome_message": "베스트랩 16차전! 시작하세요!"
+		},
+		{
+			"server_host": "localhost",
+			"server_port": 11001,
+			"listen_port": 12001,
+			"welcome_message": ""
 		}
 	]
 }

@@ -60,7 +60,14 @@ app.get('/monitor', function(req, res) {
 });
 
 io.of('/monitor').on('connection', function(socket) {
-	app.emit("send-plugin", 0, { command: "get_current_session_info", id: socket.id });
+	socket.on('get_running_plugin_list', function() {
+		app.emit("get-running-plugins", socket.id);
+	});
+
+	socket.on('send-plugin', function(plugin_idx, msg) {
+		msg.id = socket.id;
+		app.emit("send-plugin", plugin_idx, msg);
+	});
 });
 
 module.exports = app;
