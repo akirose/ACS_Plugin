@@ -1,3 +1,12 @@
 body { padding-top: 60px; }
-
 div#footer { padding-top: 20px; }
+textarea.chat-window[readonly] { background-color: #fff; }
+
+@media (max-width: 991px) {
+	textarea.chat-window[readonly] { height: 160px; }
+}
+
+@media (min-width: 992px) {
+	select.chat-user { height: 185px; }
+	textarea.chat-window[readonly] { height: 185px; }
+}

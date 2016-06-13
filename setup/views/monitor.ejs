@@ -42,9 +42,35 @@
 	<div class="panel-body">
 		<div class="row">
 			<div class="col-md-3">
-				<select multiple class="form-control">
-					<option>All (Server message)</option>
-				</select>
+				<div class="form-group">
+					<select multiple class="form-control chat-user">
+						<option>All (Server message)</option>
+					</select>
+				</div>
+				<div class="form-group">
+					<div class="btn-group btn-group-justified" role="group">
+						<div class="btn-group" role="group">
+							<button type="button" class="btn btn-success">Ballast</button>
+						</div>
+						<div class="btn-group" role="group">
+							<button type="button" class="btn btn-warning">Kick</button>
+						</div>
+						<div class="btn-group" role="group">
+							<button type="button" class="btn btn-danger">Ban</button>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="col-md-9">
+				<div class="form-group">
+					<textarea tabindex="-1" readonly class="form-control chat-window"></textarea>
+				</div>
+				<div class="input-group">
+					<input type="text" class="form-control" />
+					<span class="input-group-btn">
+    					<button class="btn btn-default" type="button">Send</button>
+    				</span>
+				</div>
 			</div>
 		</div>
 	</div>
