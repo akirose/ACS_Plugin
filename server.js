@@ -36,6 +36,7 @@ setup.on('run-plugin', function() {
 			for(var i = 0; i < plugin_keys.length; i++) {
 				if(plugins[plugin_keys[i]].process.pid === this.pid) {
 					delete plugins[plugin_keys[i]];
+					setup.io.of("/monitor").emit('get_closed_plugin', this.pid);
 					console.log("Remove Plug-in (PID : " + this.pid + ") in Running List.");
 					break;
 				}
@@ -46,6 +47,8 @@ setup.on('run-plugin', function() {
 
 		plugins[i] = { index: i, process : child };
 	}
+
+	setup.emit('get-running-plugins');
 }).on('stop-plugin', function() {
 	var plugin_keys = Object.keys(plugins);
 
@@ -66,7 +69,11 @@ setup.on('run-plugin', function() {
 		arr.push({ index: i, pid: plugin.process.pid });
 	}
 
-	setup.io.of("/monitor").to(socketid).emit('get_running_plugin_list', arr);
+	if(typeof socketid === 'undefined') {
+		setup.io.of("/monitor").emit('get_running_plugin_list', arr);
+	} else {
+		setup.io.of("/monitor").to(socketid).emit('get_running_plugin_list', arr);
+	}
 });
 
 function _handle_message(msg) {
@@ -89,7 +96,11 @@ function _handle_message(msg) {
 				this.send({ command: 'driver_info', data: driver_info });
 			}
 		case "monitor":
-			setup.io.of("/monitor").to(msg.id).emit(msg.monitor_command, msg.data);
+			if(typeof msg.id === 'undefined') {
+				setup.io.of("/monitor").emit(msg.monitor_command, { pid: this.pid, data: msg.data });
+			} else {
+				setup.io.of("/monitor").to(msg.id).emit(msg.monitor_command, { pid: this.pid, data: msg.data});
+			}
 		break;
 	}
 }

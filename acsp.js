@@ -250,6 +250,12 @@ ACSP.prototype._handleMessage = function(buf, rinfo) {
 		case ACSP.END_SESSION:
 			this.emit('end_session', this.readString(buf));
 			break;
+		case ACSP.CHAT:
+			var car_id = buf.nextUInt8();
+			var message = this.readStringW(buf);
+			
+			this.emit('chat', car_id, message);
+			break;
 		case ACSP.NEW_CONNECTION:
 			var car_info = {
 				driver_name: this.readStringW(buf),

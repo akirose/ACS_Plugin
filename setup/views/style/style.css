@@ -1,12 +1,14 @@
 body { padding-top: 60px; }
 div#footer { padding-top: 20px; }
-textarea.chat-window[readonly] { background-color: #fff; }
 
+div#chat-window { margin-bottom: 15px; }
+div#chat-window > .panel-body { overflow-y: scroll; }
+div#chat-window > .panel-body > .form-group { margin-bottom: 0px; }
 @media (max-width: 991px) {
-	textarea.chat-window[readonly] { height: 160px; }
+	div#chat-window > .panel-body { height: 160px; }
 }
 
 @media (min-width: 992px) {
 	select.chat-user { height: 185px; }
-	textarea.chat-window[readonly] { height: 185px; }
+	div#chat-window > .panel-body { height: 183px; }
 }

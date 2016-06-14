@@ -1,6 +1,8 @@
 <%- contentFor('head') %>
 <script src="/socket.io/socket.io.js"></script>
 <script type="text/javascript">
+	var current_plugin = { index: -1, pid: -1 };
+
 	$(document).ready(function() {
 		var socket = io("/monitor");
 		socket.on('connect', function() {
@@ -10,22 +12,150 @@
 			var plugins = $('select#plugins');
 			for(var k in data) {
 				var option = $("<option></option>")
+								.attr('data-pid', data[k].pid)
 								.val(data[k].index)
 								.text("#" + (data[k].index+1) + " (PID:" + data[k].pid + ")");
 				plugins.append(option);
 			}
 		});
+		socket.on('get_closed_plugin', function(pid) {
+			var plugins = $("select#plugins");
+			var value = plugins.val();
+			plugins.find('option[data-pid=' + pid + ']').remove();
+			if(value !== plugins.val()) {
+				plugins.trigger('change');
+			}
 
-		socket.on('get_current_session_info', function(data) {
-			console.log(data);
+			$.chat("server", "Stop plug-in (PID:" + pid + ")", "danger");
+		});
+		socket.on('get_current_session_info', function(msg) {
+			if(msg.pid !== current_plugin.pid) return;
+			$.chat("server", msg.data.server_name, "info");
+		});
+		socket.on('get_driver_list', function(msg) {
+			if(msg.pid !== current_plugin.pid) return;
+			var chatuser = $("select#chat-user");
+			$.each(msg.data, function() {
+				var option = $("<option></option>")
+								.attr('data-guid', this.driver_guid)
+								.val(this.car_id)
+								.text(this.driver_name);
+				chatuser.append(option);
+			});
+		});
+		socket.on('new_connection', function(msg) {
+			if(msg.pid !== current_plugin.pid) return;
+			var car_info = msg.data;
+			var option = $("<option></option>")
+							.attr('data-guid', car_info.driver_guid)
+							.val(car_info.car_id)
+							.text(car_info.driver_name);
+			$("select#chat-user").append(option);
+		});
+		socket.on('connection_closed', function(msg) {
+			if(msg.pid !== current_plugin.pid) return;
+			var car_info = msg.data;
+			var chatuser = $("select#chat-user");
+			var target = chatuser.find("option[value='" + car_info.car_id + "']");
+
+			target.remove();
+			if(chatuser.find("option:selected").size() === 0) {
+				chatuser.find("option:first").attr('selected', 'selected');
+			}
+		});
+		socket.on('get_message', function (msg) {
+			if(msg.pid !== current_plugin.pid) return;
+			var chat = msg.data;
+			$.chat(chat.driver_name, chat.message);
+		});
+
+		$("select#chat-user").change(function() {
+			var chatuser = $("select#chat-user");
+			if(chatuser.find("option:first").prop('selected') === true) {
+				chatuser.find("option:not(:first)").removeAttr("selected");
+			}
+			if(chatuser.find("option:selected").size() === 0) {
+				chatuser.find("option:first").attr('selected', 'selected');
+			}
 		});
 
 		$("select#plugins").change(function() {
+			var option = $(this).find("option:selected");
+			current_plugin = { index : Number(option.val()), pid: Number(option.attr("data-pid")) };
+
+			$("select#chat-user > option:not(:first)").remove();
 			if(this.value < 0) return;
+			$("div#chat-window > .panel-body").empty();
 
 			socket.emit('send-plugin', this.value, { command: 'get_current_session_info' });
-		})
+			socket.emit('send-plugin', this.value, { command: 'get_driver_list' });
+		});
+
+		$("input#chat").keypress(function(event) {
+			if(event.which == 13) {
+				console.log("Hey!!");
+				$("button#chat-send").trigger("click");
+			}
+		});
+		$("button#chat-send").click(function() {
+			if(current_plugin.index < 0) return;
+			var chat = $("input#chat");
+			var type = 'default';
+
+			if($.trim(chat.val()).length === 0) return;
+
+			if(chat.val().toString().indexOf('/') === 0) {
+				socket.emit('send-plugin', current_plugin.index, { command: 'admin_command', data: chat.val() });
+				type = 'warning';
+			} else {
+				$.each($("select#chat-user").val(), function(index, car_id) {
+					if(car_id >= 0) {
+						socket.emit('send-plugin', current_plugin.index, { command: 'private_chat', data: { car_id: car_id, message: chat.val() } });
+					} else {
+						socket.emit('send-plugin', current_plugin.index, { command: 'broadcast_chat', data: chat.val() });
+					}
+				});
+			}
+			$.chat('me', chat.val(), type);
+			chat.val('');
+		});
 	});
+
+	$.chat = function(from, message, type) {
+		type = (typeof type === 'undefined') ? 'default' : type;
+		var text = '';
+		if(typeof message === 'object') {
+			if(current_plugin.pid !== message.pid) {
+				return;
+			}
+			text = message.text;
+		} else {
+			text = message;
+		}
+
+		var chatwindow = $("div#chat-window > .panel-body");
+		var msg = $("<div></div>")
+						.addClass('form-group')
+						.append($("<label></label>")
+									.addClass('control-label')
+									.addClass('col-md-2')
+									.text(from))
+						.append($("<div></div>")
+									.addClass('col-md-10')
+									.append($("<p></p>")
+										.addClass('form-control-static')
+										.text(text)));
+		msg.addClass('bg-' + type);
+
+		if(chatwindow.find('div.form-group').size() > 100) {
+			chatwindow.find('div.form-group:first').remove();
+		}
+
+		chatwindow.append(msg);
+
+		var scrollheight = chatwindow.prop('scrollHeight');
+		chatwindow.scrollTop(scrollheight);
+	};
 </script>
 <%- contentFor('body') %>
 <div class="panel panel-default">
@@ -34,7 +164,7 @@
 			<label class="control-label col-md-1" for="plugins">Plug-in</label>
 			<div class="col-md-2">
 				<select id="plugins" class="form-control">
-					<option value="-1">Select</option>
+					<option data-pid="-1" value="-1">Select</option>
 				</select>
 			</div>
 		</div>
@@ -43,8 +173,8 @@
 		<div class="row">
 			<div class="col-md-3">
 				<div class="form-group">
-					<select multiple class="form-control chat-user">
-						<option>All (Server message)</option>
+					<select id="chat-user" multiple class="form-control chat-user">
+						<option value="-1" selected>All (Server message)</option>
 					</select>
 				</div>
 				<div class="form-group">
@@ -62,13 +192,14 @@
 				</div>
 			</div>
 			<div class="col-md-9">
-				<div class="form-group">
-					<textarea tabindex="-1" readonly class="form-control chat-window"></textarea>
+				<div id="chat-window" class="panel panel-default chat-window">
+					<div class="panel-body form-horizontal">
+					</div>
 				</div>
 				<div class="input-group">
-					<input type="text" class="form-control" />
+					<input id="chat" type="text" class="form-control" />
 					<span class="input-group-btn">
-    					<button class="btn btn-default" type="button">Send</button>
+    					<button id="chat-send" class="btn btn-default" type="button">Send</button>
     				</span>
 				</div>
 			</div>

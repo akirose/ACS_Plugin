@@ -60,6 +60,13 @@ var plugin = function(acsp) {
 
 			console.log("* Current session information");
 			console.log(session_info);
+
+			process.send({ command: 'monitor', monitor_command: 'get_current_session_info', data: session_info });
+		},
+		/* Chat message */
+		chat: function(car_id, message) {
+			var driver = drivers[car_id];
+			process.send({ command: 'monitor', monitor_command: 'get_message', data: { car_id : car_id, driver_name : driver.driver_name, driver_guid : driver.driver_guid, message: message } });
 		},
 		/* New connection */
 		new_connection: function(car_info) {
@@ -70,6 +77,8 @@ var plugin = function(acsp) {
 
 			console.log("** New Connection");
 			console.log(car_info);
+
+			process.send({ command: 'monitor', monitor_command: 'new_connection', data: car_info });
 		},
 		/* Client loaded */
 		client_loaded: function(car_id) {
@@ -89,6 +98,8 @@ var plugin = function(acsp) {
 
 			console.log("** Connection Closed");
 			console.log(car_info);
+
+			process.send({ command: 'monitor', monitor_command: 'connection_closed', data: car_info });
 		},
 		/* Car information */
 		car_info: function(car_info) {
@@ -160,11 +171,25 @@ plugin.prototype.bind=function() {
 			case "get_current_session_info":
 				process.send({ command: 'monitor', monitor_command: 'get_current_session_info', id: msg.id, data: current_session_info });
 			break;
-			case "get_list_clients":
-				process.send({ command: 'list_clients', data: drivers });
+			case "get_driver_list":
+				var arr = [];
+				var driver_keys = Object.keys(drivers);
+				for(var i = 0; driver_keys.length; i++) {
+					arr.push(drivers[driver_keys[i]]);
+				}
+				process.send({ command: 'monitor', monitor_command: 'get_driver_list', id: msg.id, data: drivers });
 			break;
 			case "driver_info":
 				self.emit("driver_info", msg.data);
+			break;
+			case "admin_command":
+				self.acsp.adminCommand(msg.data);
+			break;
+			case "broadcast_chat":
+				self.acsp.broadcastChat(msg.data);
+			break;
+			case "private_chat":
+				self.acsp.sendChat(msg.data.car_id, msg.data.message);
 			break;
 			default:
 				console.log("Unknown command : " + msg.command);
