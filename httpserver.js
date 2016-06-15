@@ -1,18 +1,23 @@
-const express = require('express')
+const debug = require('debug')('http:debug')
+	, info = require('debug')('http:info')
+	, express = require('express')
 	, app = express()
+	, bodyParser = require('body-parser') 
 	, engine = require('express-ejs-layouts')
-	, bodyParser = require('body-parser')
-	, fs = require('fs')
 	, server = require('http').createServer(app)
-	, io = require('socket.io').listen(server);
+	, io = require('socket.io').listen(server)
+	, fs = require('fs');
 
+/* Setting to use socket.io */
 app.server = server;
 app.io = io;
 
 /* Setup ejs template engine */
 app.set('view engine', 'ejs');
-app.set('views', __dirname + '/views');
+app.set('views', __dirname + '/webui');
 app.set('layout', 'layout');
+
+/* always using ejs-layout module */
 app.use(engine);
 
 /* Use request body parser */
@@ -20,9 +25,9 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true })); 
 
 /* Define Static Files Path */
-app.use('/images', express.static(__dirname + '/views/images'));
-app.use('/script', express.static(__dirname + '/views/script'));
-app.use('/style', express.static(__dirname + '/views/style'));
+app.use('/images', express.static(__dirname + '/webui/images'));
+app.use('/script', express.static(__dirname + '/webui/script'));
+app.use('/style', express.static(__dirname + '/webui/style'));
 
 app.get('/', function(req, res) {
 	res.render('index');
@@ -43,14 +48,14 @@ app.post('/write-setup', function(req, res) {
 	res.json({response:200});
 });
 
-app.get('/run-plugin', function(req, res) {
-	app.emit('run-plugin');
+app.get('/start-plugin', function(req, res) {
+	process.send({ command: 'start-plugin' });
 
 	res.status(200).end();
 });
 
 app.get('/stop-plugin', function(req, res) {
-	app.emit('stop-plugin');
+	process.send({ command: 'stop-plugin' });
 
 	res.status(200).end();
 });
@@ -70,4 +75,7 @@ io.of('/monitor').on('connection', function(socket) {
 	});
 });
 
-module.exports = app;
+var port = Number(process.argv[2]);
+server.listen(port, function() {
+	info("Http server listening on port %d", port);
+});

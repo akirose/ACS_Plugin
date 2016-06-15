@@ -24,6 +24,7 @@
         "ejs": "2.x.x",
         "express-ejs-layouts": "2.0.0",
         "opn": "4.x",
-        "body-parser": "1.15.1"
+        "body-parser": "1.15.1",
+        "debug": "2.2.0"
     }
 }

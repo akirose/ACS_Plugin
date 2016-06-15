@@ -1,14 +1,43 @@
-const _ = require('lodash');
-const low = require('lowdb');
-const storage = require('lowdb/file-sync');
-const fs = require('fs');
-const child_process = require('child_process');
-const setup = require('./setup/setup.js');
+const _ = require('lodash')
+	, low = require('lowdb')
+	, storage = require('lowdb/file-sync')
+	, fs = require('fs')
+	, child_process = require('child_process');
+
+var config = JSON.parse(fs.readFileSync('config.json', 'utf8'));
+var plugins = {};
 
 const db = low('data.json', {storage});
 
-var plugins = {};
+/* Run http server */
+(function httpServer(port, _handle_http_server) {
+	child_process.fork("httpserver.js", [port])
+		.on("message", _handle_http_server)
+		.on("exit", (code, signal) => {
+			console.log(">> Restarting Http Server");
+			httpServer(port, _handle_http_server);
+		});	
+})((config.http_listen_port || 3000), (message) => {
+	if(typeof message !== 'object' || typeof message.command !== 'string') return;
 
+	switch(message.command) {
+		case "start-plugin":
+			console.log("Run ACS Plug-in");
+		break;
+		case "stop-plugin":
+			console.log("Stop ACS Plug-in");
+		break;
+		default:
+			console.log("Unknown command : %s", message.command);
+		break;
+	}
+});
+
+// Process SIGNAL Event Listening
+process.on('SIGINT', function() {
+	process.exit();
+});
+/*
 // Process SIGNAL Event Listening
 process.on('SIGINT', function() {
 	process.exit();
@@ -104,3 +133,4 @@ function _handle_message(msg) {
 		break;
 	}
 }
+*/
