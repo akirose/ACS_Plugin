@@ -1,5 +1,5 @@
-const debug = require('debug')('http:debug')
-	, info = require('debug')('http:info')
+const debug = require('debug')('acsplugin-http:debug')
+	, info = require('debug')('acsplugin-http:info')
 	, express = require('express')
 	, app = express()
 	, bodyParser = require('body-parser') 

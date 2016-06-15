@@ -1,6 +1,25 @@
-const acsp = require('./acsp.js');
-const accc = require('./accc.js');
-const fs = require('fs');
+const acsp = require('./acsp.js')
+	, _ = require('lodash')
+	, Promise = require('bluebird')
+	, EventEmitter = require('events').EventEmitter
+	, util = require('util');
+
+var drivers = {};
+var current_session_info = {};
+
+var plugin = function(options) {
+	var self = this;
+
+	this.acsp = acsp(options);
+	this.acsp.once('listening', function() {
+
+	});
+}
+
+// allow emit events
+util.inherits(plugin, EventEmitter);
+
+
 
 // Process SIGNAL Event Listening
 process.on('SIGTERM', function() {
@@ -8,6 +27,7 @@ process.on('SIGTERM', function() {
 	process.exit();
 });
 
+/*
 global.config = JSON.parse(fs.readFileSync('config.json', 'utf8'));
 
 var welcome_message = [];
@@ -37,3 +57,4 @@ ac.once('listening', function() {
 	console.log("ACS Plug-in Running (PID : " + process.pid + ")");
 }).on('error', function(e) {
 });
+*/

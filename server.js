@@ -24,13 +24,13 @@ var webServer = (function httpServer(port, _handle_http_server) {
 
 	switch(message.command) {
 		case "start-plugin":
-			console.log("Run ACS Plug-in");
+			info("Run ACS Plug-in");
 		break;
 		case "stop-plugin":
-			console.log("Stop ACS Plug-in");
+			info("Stop ACS Plug-in");
 		break;
 		default:
-			console.log("Unknown command : %s", message.command);
+			debug("Unknown command : %s", message.command);
 		break;
 	}
 });
