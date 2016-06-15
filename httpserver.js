@@ -33,6 +33,7 @@ app.get('/', function(req, res) {
 	res.render('index');
 });
 
+/* ACS Plug-in Setup Read / Write */
 app.get('/read-setup', function(req, res) {
 	var stat = fs.statSync('config.json');
 	if(stat.isFile()) {
@@ -40,23 +41,17 @@ app.get('/read-setup', function(req, res) {
 	} else {
 		res.json({});
 	}
-});
-
-app.post('/write-setup', function(req, res) {
+}).post('/write-setup', function(req, res) {
 	fs.writeFileSync('config.json', JSON.stringify(req.body, null, '\t'), 'utf8');
-
 	res.json({response:200});
 });
 
+/* ACS Plug-in Start / Stop */
 app.get('/start-plugin', function(req, res) {
 	process.send({ command: 'start-plugin' });
-
 	res.status(200).end();
-});
-
-app.get('/stop-plugin', function(req, res) {
+}).get('/stop-plugin', function(req, res) {
 	process.send({ command: 'stop-plugin' });
-
 	res.status(200).end();
 });
 
@@ -77,5 +72,5 @@ io.of('/monitor').on('connection', function(socket) {
 
 var port = Number(process.argv[2]);
 server.listen(port, function() {
-	info("Http server listening on port %d", port);
+	info("Http server listening on port %d (PID : %d)", port, process.pid);
 });

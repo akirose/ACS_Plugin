@@ -2,7 +2,9 @@ const _ = require('lodash')
 	, low = require('lowdb')
 	, storage = require('lowdb/file-sync')
 	, fs = require('fs')
-	, child_process = require('child_process');
+	, child_process = require('child_process')
+	, debug = require('debug')('acsplugin:debug')
+	, info = require('debug')('acsplugin:info');
 
 var config = JSON.parse(fs.readFileSync('config.json', 'utf8'));
 var plugins = {};
@@ -10,13 +12,13 @@ var plugins = {};
 const db = low('data.json', {storage});
 
 /* Run http server */
-(function httpServer(port, _handle_http_server) {
-	child_process.fork("httpserver.js", [port])
+var webServer = (function httpServer(port, _handle_http_server) {
+	return child_process.fork("httpserver.js", [port])
 		.on("message", _handle_http_server)
 		.on("exit", (code, signal) => {
-			console.log(">> Restarting Http Server");
-			httpServer(port, _handle_http_server);
-		});	
+			info("Restarting Http Server");
+			webServer = httpServer(port, _handle_http_server);
+		});
 })((config.http_listen_port || 3000), (message) => {
 	if(typeof message !== 'object' || typeof message.command !== 'string') return;
 
@@ -37,6 +39,8 @@ const db = low('data.json', {storage});
 process.on('SIGINT', function() {
 	process.exit();
 });
+
+
 /*
 // Process SIGNAL Event Listening
 process.on('SIGINT', function() {
