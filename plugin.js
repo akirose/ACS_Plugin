@@ -2,10 +2,8 @@ const acsp = require('./acsp.js')
 	, _ = require('lodash')
 	, Promise = require('bluebird')
 	, EventEmitter = require('events').EventEmitter
-	, util = require('util');
-
-var drivers = {};
-var current_session_info = {};
+	, util = require('util')
+	, debug = require('debug')('acs-plugin:debug-' + process.argv[2]);
 
 var plugin = function(options) {
 	var self = this;
@@ -19,7 +17,18 @@ var plugin = function(options) {
 // allow emit events
 util.inherits(plugin, EventEmitter);
 
+// Internal process communication
+process.on('message', function(message) {
+	if(typeof message !== 'object' || typeof message.command !== 'string') return;
 
+	switch(message.command) {
+		case "start-plugin":
+			if(typeof message.options === 'object') {
+				new plugin(message.options);
+			}
+		break;
+	}
+});
 
 // Process SIGNAL Event Listening
 process.on('SIGTERM', function() {

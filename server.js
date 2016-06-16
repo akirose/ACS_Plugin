@@ -1,17 +1,18 @@
 const _ = require('lodash')
 	, low = require('lowdb')
-	, storage = require('lowdb/file-sync')
+	, storage = require('lowdb/lib/file-sync')
 	, fs = require('fs')
 	, child_process = require('child_process')
-	, debug = require('debug')('acsplugin:debug')
-	, info = require('debug')('acsplugin:info');
+	, debug = require('debug')('acs-main:debug')
+	, info = require('debug')('acs-main:info');
 
-var config = JSON.parse(fs.readFileSync('config.json', 'utf8'));
 var plugins = {};
 
+const config = low('config.json', {storage});
 const db = low('data.json', {storage});
 
 /* Run http server */
+var http_listen_port = (config.get('http_listen_port').cloneDeep().value() || 3000);
 var webServer = (function httpServer(port, _handle_http_server) {
 	return child_process.fork("httpserver.js", [port])
 		.on("message", _handle_http_server)
@@ -19,12 +20,13 @@ var webServer = (function httpServer(port, _handle_http_server) {
 			info("Restarting Http Server");
 			webServer = httpServer(port, _handle_http_server);
 		});
-})((config.http_listen_port || 3000), (message) => {
+})((http_listen_port || 3000), (message) => {
 	if(typeof message !== 'object' || typeof message.command !== 'string') return;
 
 	switch(message.command) {
 		case "start-plugin":
 			info("Run ACS Plug-in");
+			plugin('');
 		break;
 		case "stop-plugin":
 			info("Stop ACS Plug-in");
@@ -34,6 +36,23 @@ var webServer = (function httpServer(port, _handle_http_server) {
 		break;
 	}
 });
+
+var plugin = function(act) {
+	var event_config = { 
+		title : config.get('event_title').cloneDeep().value(),
+		welcome_message : (config.get('welcome_message').cloneDeep().value() || '').split('\n')
+	};
+
+	var pconfs = config.get('plugins').cloneDeep().value();
+	for(var i in pconfs) {
+		var plugin_config = pconfs[i];
+		plugin_config.event_title = event_config.title;
+		plugin_config.welcome_message = _.cloneDeep(event_config.welcome_message)
+									.concat(plugin_config.welcome_message.split('\n'))
+									.filter(function(value) { return value.trim() !== ''; })
+									.map(function(value) { return value.trim(); });
+	}
+}
 
 // Process SIGNAL Event Listening
 process.on('SIGINT', function() {

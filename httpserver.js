@@ -1,11 +1,12 @@
-const debug = require('debug')('acsplugin-http:debug')
-	, info = require('debug')('acsplugin-http:info')
+const debug = require('debug')('acs-http:debug')
+	, info = require('debug')('acs-http:info')
 	, express = require('express')
 	, app = express()
 	, bodyParser = require('body-parser') 
 	, engine = require('express-ejs-layouts')
 	, server = require('http').createServer(app)
 	, io = require('socket.io').listen(server)
+	, monitor = require('./monitor.js')(io)
 	, fs = require('fs');
 
 /* Setting to use socket.io */
@@ -57,17 +58,6 @@ app.get('/start-plugin', function(req, res) {
 
 app.get('/monitor', function(req, res) {
 	res.render('monitor');
-});
-
-io.of('/monitor').on('connection', function(socket) {
-	socket.on('get_running_plugin_list', function() {
-		app.emit("get-running-plugins", socket.id);
-	});
-
-	socket.on('send-plugin', function(plugin_idx, msg) {
-		msg.id = socket.id;
-		app.emit("send-plugin", plugin_idx, msg);
-	});
 });
 
 var port = Number(process.argv[2]);
