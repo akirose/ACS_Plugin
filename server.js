@@ -20,16 +20,17 @@ var webServer = (function httpServer(port, _handle_http_server) {
 			info("Restarting Http Server");
 			webServer = httpServer(port, _handle_http_server);
 		});
-})((http_listen_port || 3000), (message) => {
+})((http_listen_port || 3000), function(message) {
 	if(typeof message !== 'object' || typeof message.command !== 'string') return;
 
 	switch(message.command) {
 		case "start-plugin":
 			info("Run ACS Plug-in");
-			plugin('');
+			start_plugin();
 		break;
 		case "stop-plugin":
 			info("Stop ACS Plug-in");
+			stop_plugin();
 		break;
 		default:
 			debug("Unknown command : %s", message.command);
@@ -37,7 +38,7 @@ var webServer = (function httpServer(port, _handle_http_server) {
 	}
 });
 
-var plugin = function(act) {
+var start_plugin = function() {
 	var event_config = { 
 		title : config.get('event_title').cloneDeep().value(),
 		welcome_message : (config.get('welcome_message').cloneDeep().value() || '').split('\n')
@@ -48,9 +49,37 @@ var plugin = function(act) {
 		var plugin_config = pconfs[i];
 		plugin_config.event_title = event_config.title;
 		plugin_config.welcome_message = _.cloneDeep(event_config.welcome_message)
-									.concat(plugin_config.welcome_message.split('\n'))
-									.filter(function(value) { return value.trim() !== ''; })
-									.map(function(value) { return value.trim(); });
+											.concat(plugin_config.welcome_message.split('\n'))
+											.filter(function(value) { return value.trim() !== ''; })
+											.map(function(value) { return value.trim(); });
+		launch_plugin(plugin_config);
+	}
+};
+
+var launch_plugin = function(options) {
+	var plugin = child_process.fork('plugin.js')
+			.on('exit', function(code, signal) {
+				info("Plug-in process closed. (PID : %s, Code : %d, Signal : %s)", this.pid, code, signal);
+				if(Number(code) > 0) {
+					info("Abnormal plug-in termination. Relaunch an application.");
+					var plugin = plugins[this.pid];
+					launch_plugin(_.cloneDeep(plugin.options));
+				}
+				delete plugins[this.pid];
+			});
+	plugin.send({ command: 'start-plugin', options: options });
+	plugins[plugin.pid] = { options: options, process: plugin };
+	info("Plug-in running on PID (%d)", plugin.pid);
+
+	return plugin;
+}
+
+var stop_plugin = function() {
+	var pids = Object.keys(plugins);
+	console.log(pids);
+	for(var pid in pids) {
+		var plugin = plugins[pids[pid]];
+		plugin.process.kill('SIGTERM');
 	}
 }
 

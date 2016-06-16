@@ -12,7 +12,7 @@
 			"server_host": "localhost",
 			"server_port": 11001,
 			"listen_port": 12001,
-			"welcome_message": "\r\n\r\n\r\n"
+			"welcome_message": ""
 		}
 	]
 }

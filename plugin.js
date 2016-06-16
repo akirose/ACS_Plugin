@@ -3,13 +3,34 @@ const acsp = require('./acsp.js')
 	, Promise = require('bluebird')
 	, EventEmitter = require('events').EventEmitter
 	, util = require('util')
-	, debug = require('debug')('acs-plugin:debug-' + process.argv[2]);
+	, debug = require('debug')('acs-plugin:debug-' + process.pid)
+	, info = require('debug')('acs-plugin:info-' + process.pid);
 
 var plugin = function(options) {
 	var self = this;
 
 	this.acsp = acsp(options);
 	this.acsp.once('listening', function() {
+		global.timer = setInterval(function() {
+			acsp.getSessionInfo().then(function(session_info) {
+				var session_count = 0;
+				var i = 0;
+				handler = function(car_info) {
+						if(car_info.isConnected == true) {
+							session_count++;
+						}
+						i++;
+						acsp.getCarInfo(i).then(handler, function(e) {});
+					}
+				acsp.getCarInfo(i).then(handler, function(e) {});
+
+				if(session_count > 0) {
+					info(session_count + " sessions are already connected.");
+				}
+			}, function(e) {});
+		}, 3000);
+	});
+	this.acsp.on('version', function(version) {
 
 	});
 }
