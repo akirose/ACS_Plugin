@@ -4,15 +4,30 @@ const acsp = require('./acsp.js')
 	, EventEmitter = require('events').EventEmitter
 	, util = require('util')
 	, debug = require('debug')('acs-plugin:debug-' + process.pid)
-	, info = require('debug')('acs-plugin:info-' + process.pid);
+	, info = require('debug')('acs-plugin:info-' + process.pid)
+	, io = require('socket.io-client')
+	, monitor = require('./plugin-monitor.js');
 
 var plugin = function(options) {
 	var self = this;
 
+	this.options = options;
 	this.acsp = acsp(options);
+
+	// Connect to monitor socket
+	this.monitor = io('http://localhost:' + options.monitor_port + '/monitor');
+
 	this.acsp.once('listening', function() {
+		info('ACS Plug-in listening on port %d (ACServer : %s:%d)', this.options.listen_port, this.options.server_host, this.options.server_port);
+
+		// Attach monitor socket handlers
+		_.forEach(monitor(self, debug, info), function(value, key) {
+			debug('Attach event listener \'%s\' to monitor socket.', key);
+			self.monitor.on(key, value);
+		});
+
 		global.timer = setInterval(function() {
-			acsp.getSessionInfo().then(function(session_info) {
+			self.acsp.getSessionInfo().then(function(session_info) {
 				var session_count = 0;
 				var i = 0;
 				handler = function(car_info) {
@@ -20,9 +35,9 @@ var plugin = function(options) {
 							session_count++;
 						}
 						i++;
-						acsp.getCarInfo(i).then(handler, function(e) {});
+						self.acsp.getCarInfo(i).then(handler, function(e) {});
 					}
-				acsp.getCarInfo(i).then(handler, function(e) {});
+				self.acsp.getCarInfo(i).then(handler, function(e) {});
 
 				if(session_count > 0) {
 					info(session_count + " sessions are already connected.");
@@ -32,6 +47,12 @@ var plugin = function(options) {
 	});
 	this.acsp.on('version', function(version) {
 
+	});
+	this.acsp.on('session_info', function(session_info) {
+		if(typeof global.timer === 'object') {
+			clearInterval(global.timer);
+			delete global.timer;
+		}
 	});
 }
 

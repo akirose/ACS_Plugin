@@ -47,6 +47,7 @@ var start_plugin = function() {
 	var pconfs = config.get('plugins').cloneDeep().value();
 	for(var i in pconfs) {
 		var plugin_config = pconfs[i];
+		plugin_config.monitor_port = http_listen_port;
 		plugin_config.event_title = event_config.title;
 		plugin_config.welcome_message = _.cloneDeep(event_config.welcome_message)
 											.concat(plugin_config.welcome_message.split('\n'))
@@ -76,7 +77,6 @@ var launch_plugin = function(options) {
 
 var stop_plugin = function() {
 	var pids = Object.keys(plugins);
-	console.log(pids);
 	for(var pid in pids) {
 		var plugin = plugins[pids[pid]];
 		plugin.process.kill('SIGTERM');

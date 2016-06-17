@@ -1,4 +1,5 @@
 <%- contentFor('head') %>
+<script src="//cdn.jsdelivr.net/bluebird/3.4.0/bluebird.min.js"></script>
 <script src="/socket.io/socket.io.js"></script>
 <script type="text/javascript">
 	var current_plugin = { index: -1, pid: -1 };
@@ -6,19 +7,34 @@
 	$(document).ready(function() {
 		var socket = io("/monitor");
 		socket.on('connect', function() {
-			socket.emit('get_running_plugin_list');
+			socket.emit('greet', { type: 'monitor' });
 		});
-		socket.on('get_running_plugin_list', function(data) {
-			var plugins = $('select#plugins');
-			for(var k in data) {
-				var option = $("<option></option>")
-								.attr('data-pid', data[k].pid)
-								.val(data[k].index)
-								.text("#" + (data[k].index+1) + " (PID:" + data[k].pid + ")");
-				plugins.append(option);
-			}
+		// plug-in information
+		socket.on('plugin_info', function(plugin_info) {
+			var option = $("<option></option>")
+							.attr('data-pid', plugin_info.pid)
+							.val(plugin_info.pid)
+							.text("#" + plugin_info.options.listen_port + " (PID:" + plugin_info.pid + ")");
+			$('select#plugins').append(option);
+
+			// current session information
+			this.emit('session_info', this.nsp.id, plugin_info.pid);
+			new Promise(function(resolve, reject) {
+					handler = function(pid, session_info) {
+						if(plugin_info.pid === pid && session_info.session_index === session_info.current_session_index)  {
+							resolve(session_info);
+							socket.removeListener('session_info', handler);
+						}
+					};
+					socket.on('session_info', handler);
+				}).timeout(1000).error(function(error) {
+					var option = $('select#plugins > option[value=' + plugin_info.pid + ']');
+					option.text(option.text() + ' - Not yet been connected.');
+				}).finally(function() {
+					socket.removeListener('session_info', handler);
+				});
 		});
-		socket.on('get_closed_plugin', function(pid) {
+		socket.on('plugin_disconnect', function(pid) {
 			var plugins = $("select#plugins");
 			var value = plugins.val();
 			plugins.find('option[data-pid=' + pid + ']').remove();
@@ -27,97 +43,9 @@
 			}
 
 			$.chat("server", "Stop plug-in (PID:" + pid + ")", "danger");
-		});
-		socket.on('get_current_session_info', function(msg) {
-			if(msg.pid !== current_plugin.pid) return;
-			$.chat("server", msg.data.server_name, "info");
-		});
-		socket.on('get_driver_list', function(msg) {
-			if(msg.pid !== current_plugin.pid) return;
-			var chatuser = $("select#chat-user");
-			$.each(msg.data, function() {
-				var option = $("<option></option>")
-								.attr('data-guid', this.driver_guid)
-								.val(this.car_id)
-								.text(this.driver_name);
-				chatuser.append(option);
-			});
-		});
-		socket.on('new_connection', function(msg) {
-			if(msg.pid !== current_plugin.pid) return;
-			var car_info = msg.data;
-			var option = $("<option></option>")
-							.attr('data-guid', car_info.driver_guid)
-							.val(car_info.car_id)
-							.text(car_info.driver_name);
-			$("select#chat-user").append(option);
-		});
-		socket.on('connection_closed', function(msg) {
-			if(msg.pid !== current_plugin.pid) return;
-			var car_info = msg.data;
-			var chatuser = $("select#chat-user");
-			var target = chatuser.find("option[value='" + car_info.car_id + "']");
-
-			target.remove();
-			if(chatuser.find("option:selected").size() === 0) {
-				chatuser.find("option:first").attr('selected', 'selected');
-			}
-		});
-		socket.on('get_message', function (msg) {
-			if(msg.pid !== current_plugin.pid) return;
-			var chat = msg.data;
-			$.chat(chat.driver_name, chat.message);
-		});
-
-		$("select#chat-user").change(function() {
-			var chatuser = $("select#chat-user");
-			if(chatuser.find("option:first").prop('selected') === true) {
-				chatuser.find("option:not(:first)").removeAttr("selected");
-			}
-			if(chatuser.find("option:selected").size() === 0) {
-				chatuser.find("option:first").attr('selected', 'selected');
-			}
-		});
+		})
 
 		$("select#plugins").change(function() {
-			var option = $(this).find("option:selected");
-			current_plugin = { index : Number(option.val()), pid: Number(option.attr("data-pid")) };
-
-			$("select#chat-user > option:not(:first)").remove();
-			if(this.value < 0) return;
-			$("div#chat-window > .panel-body").empty();
-
-			socket.emit('send-plugin', this.value, { command: 'get_current_session_info' });
-			socket.emit('send-plugin', this.value, { command: 'get_driver_list' });
-		});
-
-		$("input#chat").keypress(function(event) {
-			if(event.which == 13) {
-				console.log("Hey!!");
-				$("button#chat-send").trigger("click");
-			}
-		});
-		$("button#chat-send").click(function() {
-			if(current_plugin.index < 0) return;
-			var chat = $("input#chat");
-			var type = 'default';
-
-			if($.trim(chat.val()).length === 0) return;
-
-			if(chat.val().toString().indexOf('/') === 0) {
-				socket.emit('send-plugin', current_plugin.index, { command: 'admin_command', data: chat.val() });
-				type = 'warning';
-			} else {
-				$.each($("select#chat-user").val(), function(index, car_id) {
-					if(car_id >= 0) {
-						socket.emit('send-plugin', current_plugin.index, { command: 'private_chat', data: { car_id: car_id, message: chat.val() } });
-					} else {
-						socket.emit('send-plugin', current_plugin.index, { command: 'broadcast_chat', data: chat.val() });
-					}
-				});
-			}
-			$.chat('me', chat.val(), type);
-			chat.val('');
 		});
 	});
 
