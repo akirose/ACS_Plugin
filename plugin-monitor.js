@@ -11,7 +11,7 @@ module.exports = function(plugin, debug, info) {
 			plugin.acsp.getSessionInfo().then((session_info) => {
 				this.emit('session_info', client_id, process.pid, session_info);
 			}, function(error) {
-				info("Plug-in (PID : %d) has not yet been connect to AC Server.", process.pid);
+				info("Plug-in(PID:%d) has not yet been connect to AC Server.", process.pid);
 			});
 		}
 	};

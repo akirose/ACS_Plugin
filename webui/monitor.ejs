@@ -13,6 +13,7 @@
 		socket.on('plugin_info', function(plugin_info) {
 			var option = $("<option></option>")
 							.attr('data-pid', plugin_info.pid)
+							.attr('data-listen-port', plugin_info.options.listen_port)
 							.val(plugin_info.pid)
 							.text("#" + plugin_info.options.listen_port + " (PID:" + plugin_info.pid + ")");
 			$('select#plugins').append(option);
@@ -29,7 +30,7 @@
 					socket.on('session_info', handler);
 				}).timeout(1000).error(function(error) {
 					var option = $('select#plugins > option[value=' + plugin_info.pid + ']');
-					option.text(option.text() + ' - Not yet been connected.');
+					option.text('#' + plugin_info.options.listen_port + ' (PID : ' + plugin_info.pid + ') - Not yet been connected.');
 				}).finally(function() {
 					socket.removeListener('session_info', handler);
 				});
@@ -43,8 +44,17 @@
 			}
 
 			$.chat("server", "Stop plug-in (PID:" + pid + ")", "danger");
-		})
+		});
+		socket.on('session_info', function(pid, session_info) {
+			var option = $('select#plugins > option[value=' + pid + ']');
+			option.text('#' + option.attr('data-listen-port') + ' (PID : ' + pid + ') - ' + session_info.server_name);
 
+			$.chat('server', session_info.name + ' - ' + session_info.track);
+		});
+
+		$("#run_plugin_btn").click(function() {
+			$("select#plugins > option:not(:first)").remove();
+		});
 		$("select#plugins").change(function() {
 		});
 	});
@@ -92,7 +102,7 @@
 			<label class="control-label col-md-1" for="plugins">Plug-in</label>
 			<div class="col-md-2">
 				<select id="plugins" class="form-control">
-					<option data-pid="-1" value="-1">Select</option>
+					<option data-pid="-1" value="-1">All</option>
 				</select>
 			</div>
 		</div>

@@ -27,37 +27,51 @@ var plugin = function(options) {
 		});
 
 		global.timer = setInterval(function() {
-			self.acsp.getSessionInfo().then(function(session_info) {
-				var session_count = 0;
-				var i = 0;
-				handler = function(car_info) {
-						if(car_info.isConnected == true) {
-							session_count++;
-						}
-						i++;
-						self.acsp.getCarInfo(i).then(handler, function(e) {});
-					}
-				self.acsp.getCarInfo(i).then(handler, function(e) {});
-
-				if(session_count > 0) {
-					info(session_count + " sessions are already connected.");
-				}
-			}, function(e) {});
+			self.acsp.getSessionInfo().error(function(error) {
+			});
 		}, 3000);
 	});
 	this.acsp.on('version', function(version) {
-
+		info('Protocol version : %d', version);
+		this._bind();
 	});
 	this.acsp.on('session_info', function(session_info) {
 		if(typeof global.timer === 'object') {
 			clearInterval(global.timer);
 			delete global.timer;
+
+			info('Plug-in(PID:%d) was connected to AC Server (%s:%d).', process.pid, this.options.server_host, this.options.server_port);
+
+			var session_count = 0;
+			var i = 0;
+			handler = function(car_info) {
+					if(car_info.isConnected == true) {
+						session_count++;
+					}
+					i++;
+					self.acsp.getCarInfo(i).then(handler, function(e) {});
+				}
+			self.acsp.getCarInfo(i).then(handler, function(e) {});
+
+			if(session_count > 0) {
+				info(session_count + " sessions are already connected.");
+			}
 		}
 	});
+
+	this._bind = function() {
+		var self = this;
+
+		_.forEach(plugin.prototype, function(value, key) {
+			self.acsp.on(key, value);
+		});
+	}	
 }
 
-// allow emit events
-util.inherits(plugin, EventEmitter);
+// Lazy initiailzed handlers
+plugin.prototype.car_info = function(car_info) {
+	debug('Listen : car_info');
+}
 
 // Internal process communication
 process.on('message', function(message) {
