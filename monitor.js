@@ -40,6 +40,17 @@ module.exports = function(io) {
 			}
 		});
 
+		// notify to all monitors
+		socket.on('new_connection', function(car_info) {
+			self.io.to('monitor').emit('new_connection', car_info);
+		});
+
+		socket.on('chat', function(message, type) {
+			if(this.monitor.type === 'plugin') {
+				self.io.to('monitor').emit('chat', message, type);
+			}
+		});
+
 		socket.on('disconnect', function() {
 			info('Client disconnected. (%s, PID : %d)', this.monitor.type, (this.monitor.pid || -1));
 			self.io.to('monitor').emit('plugin_disconnect', this.monitor.pid);

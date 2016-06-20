@@ -17,7 +17,7 @@
 		$(document).ready(function() {
 			$("#run_plugin_btn").click(function() {
 				$("#progress_overlay").modal('show');
-				$.get("/start-plugin", function() {
+				$.get("/start_plugin", function() {
 				}).always(function() {
 					setTimeout(function() { $("#progress_overlay").modal('hide'); }, 800);
 				});
@@ -25,7 +25,7 @@
 
 			$("#stop_plugin_btn").click(function() {
 				$("#progress_overlay").modal('show');
-				$.get("/stop-plugin", function() {
+				$.get("/stop_plugin", function() {
 				}).always(function() {
 					setTimeout(function() { $("#progress_overlay").modal('hide'); }, 800);
 				});

@@ -49,7 +49,10 @@
 			var option = $('select#plugins > option[value=' + pid + ']');
 			option.text('#' + option.attr('data-listen-port') + ' (PID : ' + pid + ') - ' + session_info.server_name);
 
-			$.chat('server', session_info.name + ' - ' + session_info.track);
+			$.chat('server', session_info.name + ' - ' + session_info.track, 'info');
+		});
+		socket.on('chat', function(message, type) {
+			$.chat('server', message, type);
 		});
 
 		$("#run_plugin_btn").click(function() {

@@ -24,11 +24,11 @@ var webServer = (function httpServer(port, _handle_http_server) {
 	if(typeof message !== 'object' || typeof message.command !== 'string') return;
 
 	switch(message.command) {
-		case "start-plugin":
+		case "start_plugin":
 			info("Run ACS Plug-in");
 			start_plugin();
 		break;
-		case "stop-plugin":
+		case "stop_plugin":
 			info("Stop ACS Plug-in");
 			stop_plugin();
 		break;
@@ -59,6 +59,36 @@ var start_plugin = function() {
 
 var launch_plugin = function(options) {
 	var plugin = child_process.fork('plugin.js')
+			.on('message', function(message) {
+				if(typeof message !== 'object' || typeof message.command !== 'string') return;
+
+				switch(message.command) {
+					case "add_driver_info":
+						var driver_info = message.data;
+						var filtered = db.get('drivers')
+											.filter({ guid: driver_info.guid })
+											.size().value();
+						if(filtered > 0) {
+							if(filtered == 1) {
+								driver_info = db.get('drivers').find({ guid: driver_info.guid }).assign(driver_info).value();
+							} else {
+								db.get('drivers').remove({ guid: driver_info.guid });
+								filtered = 0;
+							}
+						}
+
+						if(filtered == 0) {
+							driver_info = _.assign(driver_info, { ballast : 0 });
+							db.get('drivers').push(driver_info);
+						}
+					break;
+					case "driver_info":
+						var guid = message.data;
+						var driver_info = db.get('drivers').find({ guid: guid }).value();
+						this.send({ command: 'driver_info', data: driver_info });
+					break;
+				}
+			})
 			.on('exit', function(code, signal) {
 				info("Plug-in process closed. (PID : %s, Code : %d, Signal : %s)", this.pid, code, signal);
 				if(Number(code) > 0) {

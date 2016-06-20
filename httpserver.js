@@ -48,11 +48,11 @@ app.get('/read-setup', function(req, res) {
 });
 
 /* ACS Plug-in Start / Stop */
-app.get('/start-plugin', function(req, res) {
-	process.send({ command: 'start-plugin' });
+app.get('/start_plugin', function(req, res) {
+	process.send({ command: 'start_plugin' });
 	res.status(200).end();
-}).get('/stop-plugin', function(req, res) {
-	process.send({ command: 'stop-plugin' });
+}).get('/stop_plugin', function(req, res) {
+	process.send({ command: 'stop_plugin' });
 	res.status(200).end();
 });
 

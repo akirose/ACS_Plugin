@@ -14,6 +14,8 @@ var plugin = function(options) {
 	this.options = options;
 	this.acsp = acsp(options);
 
+	this.cars = {};
+
 	// Connect to monitor socket
 	this.monitor = io('http://localhost:' + options.monitor_port + '/monitor');
 
@@ -26,36 +28,45 @@ var plugin = function(options) {
 			self.monitor.on(key, value);
 		});
 
-		global.timer = setInterval(function() {
-			self.acsp.getSessionInfo().error(function(error) {
+		global.timer = function(callback) {
+			callback();
+			return setInterval(callback(), 3000);
+		}(function() {
+			self.acsp.getSessionInfo().then(function(session_info) {
+				if(typeof global.timer === 'object') {
+					clearInterval(global.timer);
+					delete global.timer;
+				}
+
+				var i = 0;
+				handler = function(car_info) {
+						i++;
+						acsp.getCarInfo(i).then(handler, function(e) { self._bind(); });
+					}
+				self.acsp.getCarInfo(i).then(handler, function(e) { self._bind(); });
+			}, function(error) {
+
 			});
-		}, 3000);
+		});
 	});
 	this.acsp.on('version', function(version) {
-		info('Protocol version : %d', version);
-		this._bind();
-	});
-	this.acsp.on('session_info', function(session_info) {
 		if(typeof global.timer === 'object') {
 			clearInterval(global.timer);
 			delete global.timer;
+		}
 
-			info('Plug-in(PID:%d) was connected to AC Server (%s:%d).', process.pid, this.options.server_host, this.options.server_port);
+		info('Protocol version : %d', version);
 
-			var session_count = 0;
-			var i = 0;
-			handler = function(car_info) {
-					if(car_info.isConnected == true) {
-						session_count++;
-					}
-					i++;
-					self.acsp.getCarInfo(i).then(handler, function(e) {});
-				}
-			self.acsp.getCarInfo(i).then(handler, function(e) {});
+		self.cars = {};
+		self._bind();
+	});
+	this.acsp.on('session_info', function(session_info) {
+	});
+	this.acsp.on('car_info', function(car_info) {
+		if(car_info.isConnected == true) {
+			self.cars[car_info.car_id] = car_info;
 
-			if(session_count > 0) {
-				info(session_count + " sessions are already connected.");
-			}
+			process.send({ command: 'add_driver_info', data: { car_info.driver_name, car_info.driver_guid } });
 		}
 	});
 
@@ -63,24 +74,57 @@ var plugin = function(options) {
 		var self = this;
 
 		_.forEach(plugin.prototype, function(value, key) {
-			self.acsp.on(key, value);
+			if(!key.startWith('_'))
+				self.acsp.on(key, value);
 		});
 	}	
 }
 
 // Lazy initiailzed handlers
-plugin.prototype.car_info = function(car_info) {
-	debug('Listen : car_info');
+plugin.prototype.new_connection = function(car_info) {
+	self.cars[car_info.car_id] = car_info;
+	process.send({ command: 'add_driver_info', data: { name: car_info.driver_name, guid: car_info.driver_guid } });
+}
+
+plugin.prototype.client_loaded = function(car_id) {
+	var car_info = self.cars[car_id];
+	self.monitor.emit('new_connection', car_info);
+}
+
+plugin.prototype._ballast = function(car_id) {
+	var car_info = self.cars[car_id];
+	process.send({ command: 'driver_info', data: car_info.guid });
+
+	new Promise(function(resolve, reject) {
+		handler = function(driver_info) {
+			if(driver_info.guid === car_info.guid) {
+				resolve(driver_info);
+				process.removeListener('message', handler);
+			}
+		}
+
+		process.on('message', handler);
+	}).timeout(1000)
+	.then(function(driver_info) {
+		if(driver_info.ballast > 0) {
+			self.acsp.adminCommand('/ballast ' + car_id + ' ' + driver_info.ballast);
+			self.monitor.emit('chat', driver_info.name + ' is applied to weight penalty ' + driver_info.ballast + 'kg.', 'info');
+		}
+	}, function(error) {})
+	.finally(function() {
+		process.removeListener('message', handler);
+	});
 }
 
 // Internal process communication
+var _instance;
 process.on('message', function(message) {
 	if(typeof message !== 'object' || typeof message.command !== 'string') return;
 
 	switch(message.command) {
-		case "start-plugin":
+		case "start_plugin":
 			if(typeof message.options === 'object') {
-				new plugin(message.options);
+				_instance = new plugin(message.options);
 			}
 		break;
 	}
