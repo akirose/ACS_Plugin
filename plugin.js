@@ -30,7 +30,7 @@ var plugin = function(options) {
 
 		global.timer = function(callback) {
 			callback();
-			return setInterval(callback(), 3000);
+			return setInterval(callback, 3000);
 		}(function() {
 			self.acsp.getSessionInfo().then(function(session_info) {
 				if(typeof global.timer === 'object') {
@@ -41,7 +41,7 @@ var plugin = function(options) {
 				var i = 0;
 				handler = function(car_info) {
 						i++;
-						acsp.getCarInfo(i).then(handler, function(e) { self._bind(); });
+						self.acsp.getCarInfo(i).then(handler, function(e) { self._bind(); });
 					}
 				self.acsp.getCarInfo(i).then(handler, function(e) { self._bind(); });
 			}, function(error) {
@@ -66,7 +66,7 @@ var plugin = function(options) {
 		if(car_info.isConnected == true) {
 			self.cars[car_info.car_id] = car_info;
 
-			process.send({ command: 'add_driver_info', data: { car_info.driver_name, car_info.driver_guid } });
+			process.send({ command: 'add_driver_info', data: { name: car_info.driver_name, guid: car_info.driver_guid } });
 		}
 	});
 
@@ -74,25 +74,27 @@ var plugin = function(options) {
 		var self = this;
 
 		_.forEach(plugin.prototype, function(value, key) {
-			if(!key.startWith('_'))
-				self.acsp.on(key, value);
+			if(!key.startsWith('_')) {
+				self.acsp.on(key, function() { value.apply(self, arguments) });
+			}
 		});
 	}	
 }
 
 // Lazy initiailzed handlers
 plugin.prototype.new_connection = function(car_info) {
-	self.cars[car_info.car_id] = car_info;
+	this.cars[car_info.car_id] = car_info;
 	process.send({ command: 'add_driver_info', data: { name: car_info.driver_name, guid: car_info.driver_guid } });
 }
 
 plugin.prototype.client_loaded = function(car_id) {
-	var car_info = self.cars[car_id];
-	self.monitor.emit('new_connection', car_info);
+	var car_info = this.cars[car_id];
+	this.monitor.emit('new_connection', car_info);
 }
 
 plugin.prototype._ballast = function(car_id) {
-	var car_info = self.cars[car_id];
+	var self = this;
+	var car_info = this.cars[car_id];
 	process.send({ command: 'driver_info', data: car_info.guid });
 
 	new Promise(function(resolve, reject) {

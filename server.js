@@ -98,7 +98,7 @@ var launch_plugin = function(options) {
 				}
 				delete plugins[this.pid];
 			});
-	plugin.send({ command: 'start-plugin', options: options });
+	plugin.send({ command: 'start_plugin', options: options });
 	plugins[plugin.pid] = { options: options, process: plugin };
 	info("Plug-in running on PID (%d)", plugin.pid);
 

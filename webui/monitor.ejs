@@ -45,6 +45,9 @@
 
 			$.chat("server", "Stop plug-in (PID:" + pid + ")", "danger");
 		});
+		socket.on('new_connection', function(car_info) {
+			console.log(car_info);
+		});
 		socket.on('session_info', function(pid, session_info) {
 			var option = $('select#plugins > option[value=' + pid + ']');
 			option.text('#' + option.attr('data-listen-port') + ' (PID : ' + pid + ') - ' + session_info.server_name);
