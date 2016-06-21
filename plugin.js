@@ -114,8 +114,9 @@ plugin.prototype.client_loaded = function(car_id) {
 
 // (private) Send welcome message to client.
 plugin.prototype._welcome_message = function(car_id) {
+	var self = this;
 	_.forEach(this.options.welcome_message, function(message, key) {
-		this.acsp.sendChat(car_id, message);
+		self.acsp.sendChat(car_id, message);
 	});
 }
 
