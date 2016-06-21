@@ -32,17 +32,41 @@ module.exports = function(io) {
 			self.io.to((client_id || 'monitor')).emit('plugin_info', plugin_info);
 		});
 
-		socket.on('session_info', function(client_id, pid, session_info) {
-			if(typeof session_info === 'undefined') { // request to plug-in
-				self.io.to(plugins[pid]).emit('session_info', client_id);
-			} else { // response to monitor
-				self.io.to((client_id || 'monitor')).emit('session_info', pid, session_info);
+		socket.on('session_info', function() {
+			if(typeof this.monitor !== 'object' || typeof this.monitor.type !== 'string') return;
+
+			var client_id, pid, session_info;
+			switch(this.monitor.type) {
+				case 'monitor':
+					[pid] = arguments;
+					self.io.to(plugins[pid]).emit('session_info', this.id);
+				break;
+				case 'plugin':
+					[session_info, client_id] = arguments;
+					self.io.to((client_id || 'monitor')).emit('session_info', this.monitor.pid, session_info);
+				break;
+			}
+		});
+
+		socket.on('car_info', function() {
+			if(typeof this.monitor !== 'object' || typeof this.monitor.type !== 'string') return;
+
+			var client_id, pid, car_id, car_info;
+			switch(this.monitor.type) {
+				case 'monitor':
+					[pid, car_id] = arguments;
+					self.io.to(plugins[pid]).emit('car_info', this.id, car_id);
+				break;
+				case 'plugin':
+					[car_info, client_id] = arguments;
+					self.io.to((client_id || 'monitor')).emit('car_info', this.monitor.pid, car_info);
+				break;
 			}
 		});
 
 		// notify to all monitors
 		socket.on('new_connection', function(car_info) {
-			self.io.to('monitor').emit('new_connection', car_info);
+			self.io.to('monitor').emit('new_connection', this.monitor.pid, car_info);
 		});
 
 		socket.on('chat', function(message, type) {

@@ -41,14 +41,20 @@ var plugin = function(options) {
 				var i = 0;
 				handler = function(car_info) {
 						i++;
+						if(car_info.isConnected == true) {
+							self.cars[car_info.car_id] = car_info;
+							process.send({ command: 'add_driver_info', data: { name: car_info.driver_name, guid: car_info.driver_guid } });
+
+							self._ballast(car_info.car_id);
+							self.monitor.emit('car_info', car_info);
+						}
 						self.acsp.getCarInfo(i).then(handler, function(e) { self._bind(); });
 					}
 				self.acsp.getCarInfo(i).then(handler, function(e) { self._bind(); });
-			}, function(error) {
-
-			});
+			}, function(error) {});
 		});
 	});
+
 	this.acsp.on('version', function(version) {
 		if(typeof global.timer === 'object') {
 			clearInterval(global.timer);
@@ -60,57 +66,77 @@ var plugin = function(options) {
 		self.cars = {};
 		self._bind();
 	});
-	this.acsp.on('session_info', function(session_info) {
-	});
-	this.acsp.on('car_info', function(car_info) {
-		if(car_info.isConnected == true) {
-			self.cars[car_info.car_id] = car_info;
-
-			process.send({ command: 'add_driver_info', data: { name: car_info.driver_name, guid: car_info.driver_guid } });
-		}
-	});
 
 	this._bind = function() {
 		var self = this;
-
-		_.forEach(plugin.prototype, function(value, key) {
+		_.forEach(plugin.prototype, function(callback, key) {
 			if(!key.startsWith('_')) {
-				self.acsp.on(key, function() { value.apply(self, arguments) });
+				self.acsp.on(key, function() { callback.apply(self, arguments) });
 			}
 		});
 	}	
 }
 
-// Lazy initiailzed handlers
+plugin.prototype.session_info = function(session_info) {
+}
+
+// New client connected.
 plugin.prototype.new_connection = function(car_info) {
 	this.cars[car_info.car_id] = car_info;
 	process.send({ command: 'add_driver_info', data: { name: car_info.driver_name, guid: car_info.driver_guid } });
-}
 
-plugin.prototype.client_loaded = function(car_id) {
-	var car_info = this.cars[car_id];
 	this.monitor.emit('new_connection', car_info);
 }
 
+// Get loading complete of client.
+plugin.prototype.client_loaded = function(car_id) {
+	var self = this;
+
+	if(!_.has(this.cars, car_id)) {
+		this.acsp.getCarInfo(car_id).then(function(car_info) {
+			self._welcome_message(car_id);
+			self._ballast(car_id);
+		}, function(error) {});
+
+		return true;
+	}
+	var car_info = this.cars[car_id];
+
+	this._welcome_message(car_id);
+	this._ballast(car_id).then(function(driver_info) {
+		var message = driver_info.name + ' is applied to weight penalty ' + driver_info.ballast + 'kg.';
+		self.acsp.sendChat(car_id, message);
+		self.monitor.emit('chat', message, 'info');
+	});
+
+	this.monitor.emit('car_info', car_info);
+}
+
+// (private) Send welcome message to client.
+plugin.prototype._welcome_message = function(car_id) {
+	_.forEach(this.options.welcome_message, function(message, key) {
+		this.acsp.sendChat(car_id, message);
+	});
+}
+
+// (private) Applying a weight penalty.
 plugin.prototype._ballast = function(car_id) {
 	var self = this;
 	var car_info = this.cars[car_id];
 	process.send({ command: 'driver_info', data: car_info.guid });
 
-	new Promise(function(resolve, reject) {
+	return new Promise(function(resolve, reject) {
 		handler = function(driver_info) {
 			if(driver_info.guid === car_info.guid) {
 				resolve(driver_info);
 				process.removeListener('message', handler);
 			}
 		}
-
 		process.on('message', handler);
 	}).timeout(1000)
 	.then(function(driver_info) {
 		if(driver_info.ballast > 0) {
 			self.acsp.adminCommand('/ballast ' + car_id + ' ' + driver_info.ballast);
-			self.monitor.emit('chat', driver_info.name + ' is applied to weight penalty ' + driver_info.ballast + 'kg.', 'info');
 		}
 	}, function(error) {})
 	.finally(function() {

@@ -9,6 +9,7 @@
 		socket.on('connect', function() {
 			socket.emit('greet', { type: 'monitor' });
 		});
+
 		// plug-in information
 		socket.on('plugin_info', function(plugin_info) {
 			var option = $("<option></option>")
@@ -19,7 +20,7 @@
 			$('select#plugins').append(option);
 
 			// current session information
-			this.emit('session_info', this.nsp.id, plugin_info.pid);
+			this.emit('session_info', plugin_info.pid);
 			new Promise(function(resolve, reject) {
 					handler = function(pid, session_info) {
 						if(plugin_info.pid === pid && session_info.session_index === session_info.current_session_index)  {
@@ -35,6 +36,7 @@
 					socket.removeListener('session_info', handler);
 				});
 		});
+
 		socket.on('plugin_disconnect', function(pid) {
 			var plugins = $("select#plugins");
 			var value = plugins.val();
@@ -45,15 +47,22 @@
 
 			$.chat("server", "Stop plug-in (PID:" + pid + ")", "danger");
 		});
-		socket.on('new_connection', function(car_info) {
+
+		socket.on('new_connection', function(pid, car_info) {
 			console.log(car_info);
 		});
+
 		socket.on('session_info', function(pid, session_info) {
 			var option = $('select#plugins > option[value=' + pid + ']');
 			option.text('#' + option.attr('data-listen-port') + ' (PID : ' + pid + ') - ' + session_info.server_name);
 
 			$.chat('server', session_info.name + ' - ' + session_info.track, 'info');
 		});
+
+		socket.on('car_info', function(pid, car_info) {
+			console.log(car_info);
+		});
+
 		socket.on('chat', function(message, type) {
 			$.chat('server', message, type);
 		});
@@ -61,6 +70,7 @@
 		$("#run_plugin_btn").click(function() {
 			$("select#plugins > option:not(:first)").remove();
 		});
+
 		$("select#plugins").change(function() {
 		});
 	});
