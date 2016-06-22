@@ -90,8 +90,8 @@
 			console.log(car_info);
 		});
 
-		socket.on('chat', function(pid, message, type) {
-			$.chat('server', message, type);
+		socket.on('chat', function(pid, name, message, type) {
+			$.chat(name, message, type);
 		});
 
 		$("#run_plugin_btn").click(function() {
@@ -109,21 +109,23 @@
 			}
 		});
 		$("button#chat-send").click(function() {
-			if(current_plugin.index < 0) return;
 			var chat = $("input#chat");
 			var type = 'default';
 
-			if($.trim(chat.val()).length === 0) return;
+			if($.trim(chat.val()).length === 0) {
+				chat.val('');
+				return;
+			}
 
 			if(chat.val().toString().indexOf('/') === 0) {
-				socket.emit('send-plugin', current_plugin_pid, { command: 'admin_command', data: chat.val() });
+				socket.emit('chat', current_plugin_pid, -1, chat.val());
 				type = 'warning';
 			} else {
 				$.each($("select#chat-user").val(), function(index, car_id) {
 					if(car_id >= 0) {
-						socket.emit('send-plugin', current_plugin_pid, { command: 'privateChat', data: { car_id: car_id, message: chat.val() } });
+						socket.emit('chat', current_plugin_pid, car_id, chat.val());
 					} else {
-						socket.emit('send-plugin', current_plugin_pid, { command: 'broadcastChat', data: chat.val() });
+						socket.emit('chat', current_plugin_pid, -1, chat.val());
 					}
 				});
 			}

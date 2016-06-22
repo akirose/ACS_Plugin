@@ -66,10 +66,10 @@ module.exports = function(io) {
 
 		// notify to all monitors
 		socket.on('new_connection', function(car_info) {
-			self.io.to('monitor').emit('new_connection', this.monitor.pid, car_info);
+			self.io.to('monitor').emit('new_connection', 'plugin-'+this.monitor.pid, car_info);
 		});
 		socket.on('connection_closed', function(car_info) {
-			self.io.to('monitor').emit('connection_closed', this.monitor.pid, car_info);
+			self.io.to('monitor').emit('connection_closed', 'plugin-'+this.monitor.pid, car_info);
 		});
 
 		socket.on('chat', function() {
@@ -79,11 +79,15 @@ module.exports = function(io) {
 				self.io.to('monitor').emit('chat', this.monitor.pid, name, message, type);
 			} else if(this.monitor.type === 'monitor') {
 				[pid, car_id, message] = arguments;
-				if(Number(car_id) >= 0) {
-					if(Number(pid) <= 0 ) return;
-					self.io.to(plugins[pid]).emit('privateChat', car_id, message);
+				if(message.startsWith('/')) {
+					self.io.to(plugins[pid] || 'plugin').emit('command', message);
 				} else {
-					self.io.to(Number(pid) || 'plugin').emit('broadcastChat', message);
+					if(Number(car_id) >= 0) {
+						if(Number(pid) <= 0 ) return;
+						self.io.to(plugins[pid]).emit('privateChat', car_id, message);
+					} else {
+						self.io.to(plugins[pid] || 'plugin').emit('broadcastChat', message);
+					}
 				}
 			}
 		});

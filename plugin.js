@@ -41,16 +41,20 @@ var plugin = function(options) {
 				var i = 0;
 				handler = function(car_info) {
 						i++;
-						if(car_info.isConnected == true) {
+						if(car_info.is_connected == true) {
 							self.cars[car_info.car_id] = car_info;
 							process.send({ command: 'add_driver_info', data: { name: car_info.driver_name, guid: car_info.driver_guid } });
-
-							self._ballast(car_info.car_id);
 							self.monitor.emit('car_info', car_info);
 						}
-						self.acsp.getCarInfo(i).then(handler, function(e) { self._bind(); });
+						self.acsp.getCarInfo(i).then(handler, fail);
 					}
-				self.acsp.getCarInfo(i).then(handler, function(e) { self._bind(); });
+				fail = function(e) {
+					self._bind();
+					_.forEach(self.cars, function(car_info, key) {
+						self._ballast(car_info.car_id);
+					});
+				}
+				self.acsp.getCarInfo(i).then(handler, fail);
 			}, function(error) {});
 		});
 	});
@@ -75,9 +79,6 @@ var plugin = function(options) {
 			}
 		});
 	}	
-}
-
-plugin.prototype.session_info = function(session_info) {
 }
 
 // New client connected.
@@ -106,7 +107,7 @@ plugin.prototype.client_loaded = function(car_id) {
 	this._ballast(car_id).then(function(driver_info) {
 		var message = driver_info.name + ' is applied to weight penalty ' + driver_info.ballast + 'kg.';
 		self.acsp.sendChat(car_id, message);
-		self.monitor.emit('chat', message, 'info');
+		self.monitor.emit('chat', 'plugin-'+process.pid, message, 'info');
 	});
 
 	this.monitor.emit('car_info', car_info);
@@ -124,13 +125,18 @@ plugin.prototype._welcome_message = function(car_id) {
 plugin.prototype._ballast = function(car_id) {
 	var self = this;
 	var car_info = this.cars[car_id];
-	process.send({ command: 'driver_info', data: car_info.guid });
+	process.send({ command: 'driver_info', data: car_info.driver_guid });
 
 	return new Promise(function(resolve, reject) {
-		handler = function(driver_info) {
-			if(driver_info.guid === car_info.guid) {
-				resolve(driver_info);
-				process.removeListener('message', handler);
+		handler = function(message) {
+			if(typeof message !== 'object' || typeof message.command !== 'string') return;
+
+			if(message.command === 'driver_info' && typeof message.data === 'object') {
+				var driver_info = message.data;
+				if(driver_info.guid === car_info.driver_guid) {
+					resolve(driver_info);
+					process.removeListener('message', handler);
+				}
 			}
 		}
 		process.on('message', handler);
@@ -139,7 +145,8 @@ plugin.prototype._ballast = function(car_id) {
 		if(driver_info.ballast > 0) {
 			self.acsp.adminCommand('/ballast ' + car_id + ' ' + driver_info.ballast);
 		}
-	}, function(error) {})
+		return driver_info;
+	})
 	.finally(function() {
 		process.removeListener('message', handler);
 	});

@@ -21,7 +21,7 @@ module.exports = function(plugin, debug, info) {
 			plugin.acsp.broadcastChat(message);
 		},
 		command: function(command) {
-			
+			plugin.acsp.adminCommand(command);
 		}
 	};
 }
