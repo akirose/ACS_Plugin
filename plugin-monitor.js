@@ -13,6 +13,15 @@ module.exports = function(plugin, debug, info) {
 			}, function(error) {
 				info("Plug-in(PID:%d) has not yet been connect to AC Server.", process.pid);
 			});
+		},
+		privateChat: function(car_id, message) {
+			plugin.acsp.sendChat(car_id, message);
+		},
+		broadcastChat: function(message) {
+			plugin.acsp.broadcastChat(message);
+		},
+		command: function(command) {
+			
 		}
 	};
 }

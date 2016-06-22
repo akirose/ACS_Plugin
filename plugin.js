@@ -145,6 +145,11 @@ plugin.prototype._ballast = function(car_id) {
 	});
 }
 
+plugin.prototype.chat = function(car_id, message) {
+	var car_info = this.cars[car_id];
+	this.monitor.emit('chat', car_info.driver_name, message, 'default');
+}
+
 // Internal process communication
 var _instance;
 process.on('message', function(message) {
