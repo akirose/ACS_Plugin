@@ -41,7 +41,7 @@ var plugin = function(options) {
 				var i = 0;
 				handler = function(car_info) {
 						i++;
-						if(car_info.isConnected == true) {
+						if(car_info.is_connected == true) {
 							self.cars[car_info.car_id] = car_info;
 							process.send({ command: 'add_driver_info', data: { name: car_info.driver_name, guid: car_info.driver_guid } });
 
@@ -124,13 +124,16 @@ plugin.prototype._welcome_message = function(car_id) {
 plugin.prototype._ballast = function(car_id) {
 	var self = this;
 	var car_info = this.cars[car_id];
-	process.send({ command: 'driver_info', data: car_info.guid });
+	process.send({ command: 'driver_info', data: car_info.driver_guid });
 
 	return new Promise(function(resolve, reject) {
-		handler = function(driver_info) {
-			if(driver_info.guid === car_info.guid) {
-				resolve(driver_info);
-				process.removeListener('message', handler);
+		handler = function(message) {
+			if(message.command === 'driver_info' && typeof message.data === 'object') {
+				var driver_info = message.data;
+				if(driver_info.guid === car_info.driver_guid) {
+					resolve(driver_info);
+					process.removeListener('message', handler);
+				}
 			}
 		}
 		process.on('message', handler);
@@ -139,7 +142,8 @@ plugin.prototype._ballast = function(car_id) {
 		if(driver_info.ballast > 0) {
 			self.acsp.adminCommand('/ballast ' + car_id + ' ' + driver_info.ballast);
 		}
-	}, function(error) {})
+		return driver_info;
+	})
 	.finally(function() {
 		process.removeListener('message', handler);
 	});
