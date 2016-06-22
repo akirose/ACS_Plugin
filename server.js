@@ -39,6 +39,11 @@ var webServer = (function httpServer(port, _handle_http_server) {
 });
 
 var start_plugin = function() {
+	// plugins are already running.
+	if(_.keys(plugins).length > 0) {
+		return;
+	}
+
 	var event_config = { 
 		title : config.get('event_title').cloneDeep().value(),
 		welcome_message : (config.get('welcome_message').cloneDeep().value() || '').split('\n')

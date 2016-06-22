@@ -90,10 +90,13 @@ module.exports = function(io) {
 
 		socket.on('disconnect', function() {
 			info('Client disconnected. (%s, PID : %d)', this.monitor.type, (this.monitor.pid || -1));
-			self.io.to('monitor').emit('plugin_disconnect', this.monitor.pid);
 
-			// remove plug-in client id index
-			delete plugins[this.monitor.pid];
+			if(this.monitor.type === 'plugin') {
+				self.io.to('monitor').emit('plugin_disconnect', this.monitor.pid);
+
+				// remove plug-in client id index
+				delete plugins[this.monitor.pid];
+			}
 		});
 	});
 };
