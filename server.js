@@ -1,6 +1,5 @@
 const _ = require('lodash')
 	, low = require('lowdb')
-	, storage = require('lowdb/lib/file-sync')
 	, fs = require('fs')
 	, child_process = require('child_process')
 	, debug = require('debug')('acs-main:debug')
@@ -8,8 +7,8 @@ const _ = require('lodash')
 
 var plugins = {};
 
-const config = low('config.json', {storage});
-const db = low('data.json', {storage});
+const config = low('config.json', {storage: require('lowdb/lib/file-sync'), writeOnChange: true});
+const db = low('data.json', {storage: require('lowdb/lib/file-sync')});
 
 /* Run http server */
 var http_listen_port = (config.get('http_listen_port').cloneDeep().value() || 3000);
@@ -31,6 +30,14 @@ var webServer = (function httpServer(port, _handle_http_server) {
 		case "stop_plugin":
 			info("Stop ACS Plug-in");
 			stop_plugin();
+		break;
+		case "config":
+			info("Update ACSP Config");
+			_.forEach(message.config, function(conf, key) {
+				console.log(config.get(key).value());
+				config.get(key).assign(conf);
+			});
+			config.write();
 		break;
 		default:
 			debug("Unknown command : %s", message.command);

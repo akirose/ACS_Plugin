@@ -43,7 +43,8 @@ app.get('/read-setup', function(req, res) {
 		res.json({});
 	}
 }).post('/write-setup', function(req, res) {
-	fs.writeFileSync('config.json', JSON.stringify(req.body, null, '\t'), 'utf8');
+	/*fs.writeFileSync('config.json', JSON.stringify(req.body, null, '\t'), 'utf8');*/
+	process.send({ command: 'config', config: req.body });
 	res.json({response:200});
 });
 

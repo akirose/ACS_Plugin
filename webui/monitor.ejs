@@ -45,6 +45,7 @@
 						}
 					};
 					socket.on('session_info', handler);
+				}).then(function(session_info) {
 				}).timeout(1000).error(function(error) {
 					var option = $('select#plugins > option[value=' + plugin_info.pid + ']');
 					option.text('#' + plugin_info.options.listen_port + ' (' + plugin_info.pid + ') - Not yet been connected.');
@@ -65,15 +66,24 @@
 		});
 
 		socket.on('new_connection', function(pid, car_info) {
-			if(current_plugin_pid === -1 || current_plugin_pid === Number(pid)) {
-				var server_name = $('select#plugins > option[value=' + pid + ']').attr('data-server-name');
-				$.chat(pid, car_info.driver_name + ' is connected to ' + server_name, 'info');
-			}
+			if(current_plugin_pid !== -1 && current_plugin_pid !== Number(pid)) return;
+
+			var plugin = $('select#plugins > option[value=' + pid + ']');
+			var server_name = plugin.attr('data-server-name');
+			var listen_port = plugin.attr('data-listen-port');
+			$.chat('plugin-' + listen_port, car_info.driver_name + ' is connected to ' + server_name, 'info');
 		});
 
 		socket.on('connection_closed', function(pid, car_info) {
-			if(current_plugin_pid === -1 || current_plugin_pid === Number(pid)) {
-			}
+			if(current_plugin_pid !== -1 && current_plugin_pid !== Number(pid)) return;
+
+			var chatuser = $("select#chat-user").find('option[data-pid=' + pid +'][value=' + car_info.car_id + ']');
+			chatuser.remove();
+
+			var plugin = $('select#plugins > option[value=' + pid + ']');
+			var server_name = plugin.attr('data-server-name');
+			var listen_port = plugin.attr('data-listen-port');
+			$.chat('plugin-' + listen_port, car_info.driver_name + ' has terminated the connection from ' + server_name, 'info');
 		});
 
 		socket.on('session_info', function(pid, session_info) {
@@ -82,12 +92,28 @@
 			option.text('#' + option.attr('data-listen-port') + ' (' + pid + ') - ' + '[' + session_info.name + '] '+ session_info.server_name);
 
 			if(current_plugin_pid === -1 || current_plugin_pid === Number(pid)) {
-				$.chat('plugin-' + pid, session_info.server_name + ' - ' + session_info.name, 'info');
+				$.chat('plugin-' + option.attr('data-listen-port'), session_info.server_name + ' - ' + session_info.name, 'info');
 			}
 		});
 
 		socket.on('car_info', function(pid, car_info) {
-			console.log(car_info);
+			if(current_plugin_pid !== -1 && current_plugin_pid !== Number(pid)) return;
+
+			var chatuser = $("select#chat-user");
+			var plugin = $('select#plugins > option[value=' + pid + ']');
+			var option = $("<option></option>")
+							.attr('data-pid', pid);
+
+			$.each(($.isArray(car_info) ? car_info : [car_info]), function(index, car_info) {
+				if(chatuser.find('option[data-pid=' + pid +'][value=' + car_info.car_id + ']').size() > 0) {
+					return;
+				}
+
+				option.clone()
+					.val(car_info.car_id)
+					.text( (Number(pid) === -1 ? '(' + plugin.attr('data-listen-port') + ') ' : '') + car_info.driver_name )
+					.appendTo(chatuser);
+			});
 		});
 
 		socket.on('chat', function(pid, name, message, type) {
@@ -100,6 +126,16 @@
 
 		$("select#plugins").change(function() {
 			var current_plugin_pid = Number(this.value);
+		});
+
+		$("select#chat-user").change(function() {
+			var chatuser = $("select#chat-user");
+			if(chatuser.find("option:first").prop('selected') === true) {
+				chatuser.find("option:not(:first)").removeAttr("selected");
+			}
+			if(chatuser.find("option:selected").size() === 0) {
+				chatuser.find("option:first").attr('selected', 'selected');
+			}
 		});
 
 		// input chat message
@@ -135,20 +171,11 @@
 	});
 
 	$.chat = function(from, message, type) {
-		type = (typeof type === 'undefined') ? 'default' : type;
-		var text = '';
-		if(typeof message === 'object') {
-			if(current_plugin.pid !== message.pid) {
-				return;
-			}
-			text = message.text;
-		} else {
-			text = message;
-		}
-
+		type = type || 'default';
 		var chatwindow = $("div#chat-window > .panel-body");
 		var msg = $("<div></div>")
 						.addClass('form-group')
+						.addClass('bg-' + type)
 						.append($("<label></label>")
 									.addClass('control-label')
 									.addClass('col-md-2')
@@ -157,13 +184,11 @@
 									.addClass('col-md-10')
 									.append($("<p></p>")
 										.addClass('form-control-static')
-										.text(text)));
-		msg.addClass('bg-' + type);
+										.text(message)));
 
 		if(chatwindow.find('div.form-group').size() > 100) {
 			chatwindow.find('div.form-group:first').remove();
 		}
-
 		chatwindow.append(msg);
 
 		var scrollheight = chatwindow.prop('scrollHeight');

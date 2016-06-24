@@ -66,17 +66,17 @@ module.exports = function(io) {
 
 		// notify to all monitors
 		socket.on('new_connection', function(car_info) {
-			self.io.to('monitor').emit('new_connection', 'plugin-'+this.monitor.pid, car_info);
+			self.io.to('monitor').emit('new_connection', this.monitor.pid, car_info);
 		});
 		socket.on('connection_closed', function(car_info) {
-			self.io.to('monitor').emit('connection_closed', 'plugin-'+this.monitor.pid, car_info);
+			self.io.to('monitor').emit('connection_closed', this.monitor.pid, car_info);
 		});
 
 		socket.on('chat', function() {
 			var name, message, type, car_id, pid;
 			if(this.monitor.type === 'plugin') {
 				[name, message, type] = arguments;
-				self.io.to('monitor').emit('chat', this.monitor.pid, name, message, type);
+				self.io.to('monitor').emit('chat', 'plugin-'+this.monitor.options.listen_port, name, message, type);
 			} else if(this.monitor.type === 'monitor') {
 				[pid, car_id, message] = arguments;
 				if(message.startsWith('/')) {

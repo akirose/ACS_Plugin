@@ -107,7 +107,7 @@ plugin.prototype.client_loaded = function(car_id) {
 	this._ballast(car_id).then(function(driver_info) {
 		var message = driver_info.name + ' is applied to weight penalty ' + driver_info.ballast + 'kg.';
 		self.acsp.sendChat(car_id, message);
-		self.monitor.emit('chat', 'plugin-'+process.pid, message, 'info');
+		self.monitor.emit('chat', 'plugin-'+self.options.listen_port, message, 'info');
 	});
 
 	this.monitor.emit('car_info', car_info);

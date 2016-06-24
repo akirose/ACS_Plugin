@@ -1,18 +1,18 @@
 {
-	"event_title": "ACCC Best Lap Suzuka",
-	"welcome_message": "아세토 코르사 코리아 커뮤니티 카페에서 운영하는 서버 입니다.\r\n원활한 소통을 위해 카페의 팀스피크 서버에 접속하여 주시기 바랍니다.",
-	"plugins": [
-		{
-			"server_host": "localhost",
-			"server_port": 11000,
-			"listen_port": 12000,
-			"welcome_message": "베스트랩 16차전! 시작하세요!\r\n허리허리!!!"
-		},
-		{
-			"server_host": "localhost",
-			"server_port": 11001,
-			"listen_port": 12001,
-			"welcome_message": ""
-		}
-	]
+  "event_title": "ACCC Best Lap Suzuka",
+  "welcome_message": "아세토 코르사 코리아 커뮤니티 카페에서 운영하는 서버 입니다.\r\n원활한 소통을 위해 카페의 팀스피크 서버에 접속하여 주시기 바랍니다.",
+  "plugins": [
+    {
+      "server_host": "localhost",
+      "server_port": 11000,
+      "listen_port": 12000,
+      "welcome_message": "베스트랩 16차전! 시작하세요!\r\n허리허리!!!"
+    },
+    {
+      "server_host": "localhost",
+      "server_port": 11001,
+      "listen_port": 12001,
+      "welcome_message": ""
+    }
+  ]
 }
