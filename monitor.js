@@ -55,7 +55,7 @@ module.exports = function(io) {
 			switch(this.monitor.type) {
 				case 'monitor':
 					[pid, car_id] = arguments;
-					self.io.to(plugins[pid]).emit('car_info', this.id, car_id);
+					self.io.to((Number(pid) >= 0 ? plugins[pid] : 'plugin')).emit('car_info', this.id, car_id);
 				break;
 				case 'plugin':
 					[car_info, client_id] = arguments;

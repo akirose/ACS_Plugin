@@ -7,8 +7,8 @@ const _ = require('lodash')
 
 var plugins = {};
 
-const config = low('config.json', {storage: require('lowdb/lib/file-sync'), writeOnChange: true});
-const db = low('data.json', {storage: require('lowdb/lib/file-sync')});
+var config = low('config.json', {storage: require('lowdb/lib/file-sync')});
+var db = low('data.json', {storage: require('lowdb/lib/file-sync')});
 
 /* Run http server */
 var http_listen_port = (config.get('http_listen_port').cloneDeep().value() || 3000);
@@ -34,10 +34,8 @@ var webServer = (function httpServer(port, _handle_http_server) {
 		case "config":
 			info("Update ACSP Config");
 			_.forEach(message.config, function(conf, key) {
-				console.log(config.get(key).value());
-				config.get(key).assign(conf);
+				config.set(key, conf).value();
 			});
-			config.write();
 		break;
 		default:
 			debug("Unknown command : %s", message.command);

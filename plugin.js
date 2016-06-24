@@ -89,6 +89,12 @@ plugin.prototype.new_connection = function(car_info) {
 	this.monitor.emit('new_connection', car_info);
 }
 
+plugin.prototype.connection_closed = function(car_info) {
+	delete this.cars[car_info.car_id];
+	
+	this.monitor.emit('connection_closed', car_info);
+}
+
 // Get loading complete of client.
 plugin.prototype.client_loaded = function(car_id) {
 	var self = this;

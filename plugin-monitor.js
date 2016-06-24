@@ -1,3 +1,5 @@
+const _ = require('lodash');
+
 module.exports = function(plugin, debug, info) {
 	return {
 		connect: function() {
@@ -13,6 +15,13 @@ module.exports = function(plugin, debug, info) {
 			}, function(error) {
 				info("Plug-in(PID:%d) has not yet been connect to AC Server.", process.pid);
 			});
+		},
+		car_info: function(client_id, car_id) {
+			if(car_id === -1) {
+				this.emit('car_info', _.map(plugin.cars), client_id);
+			} else {
+				this.emit('car_info', plugin.cars[car_id], client_id);
+			}
 		},
 		privateChat: function(car_id, message) {
 			plugin.acsp.sendChat(car_id, message);

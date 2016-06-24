@@ -10,6 +10,7 @@
 			socket.emit('greet', { type: 'monitor' });
 
 			$('select#plugins > option:not(:first)').remove();
+			$('select#chat-user > option:not(:first)').remove();
 			$('div#chat-window > .panel-body').empty();
 			$.chat('', 'Connected to monitor server.', 'info');
 		});
@@ -46,6 +47,8 @@
 					};
 					socket.on('session_info', handler);
 				}).then(function(session_info) {
+					socket.emit('car_info', plugin_info.pid, -1);
+					return session_info;
 				}).timeout(1000).error(function(error) {
 					var option = $('select#plugins > option[value=' + plugin_info.pid + ']');
 					option.text('#' + plugin_info.options.listen_port + ' (' + plugin_info.pid + ') - Not yet been connected.');
@@ -58,6 +61,7 @@
 			var plugins = $("select#plugins");
 			var value = plugins.val();
 			plugins.find('option[data-pid=' + pid + ']').remove();
+			$('select#chat-user > option[data-pid=' + pid + ']').remove();
 			if(value !== plugins.val()) {
 				plugins.trigger('change');
 			}
@@ -104,14 +108,16 @@
 			var option = $("<option></option>")
 							.attr('data-pid', pid);
 
-			$.each(($.isArray(car_info) ? car_info : [car_info]), function(index, car_info) {
+			$.each(($.isArray(car_info) ? car_info : [ car_info ]), function(index, car_info) {
 				if(chatuser.find('option[data-pid=' + pid +'][value=' + car_info.car_id + ']').size() > 0) {
 					return;
 				}
 
 				option.clone()
+					.attr('data-driver-name', car_info.driver_name)
+					.attr('data-driver-guid', car_info.driver_guid)
 					.val(car_info.car_id)
-					.text( (Number(pid) === -1 ? '(' + plugin.attr('data-listen-port') + ') ' : '') + car_info.driver_name )
+					.text( (Number(current_plugin_pid) === -1 ? '(' + plugin.attr('data-listen-port') + ') ' : '') + car_info.driver_name )
 					.appendTo(chatuser);
 			});
 		});
@@ -125,7 +131,21 @@
 		});
 
 		$("select#plugins").change(function() {
-			var current_plugin_pid = Number(this.value);
+			current_plugin_pid = Number(this.value);
+
+			if(current_plugin_pid > 0) {
+				$('select#chat-user').find('option:not(:first)').each(function(index, element) {
+					var option = $(element);
+					if(current_plugin_pid !== Number(option.attr('data-pid'))) {
+						option.remove();
+					} else {
+						option.text(option.attr('data-driver-name'));
+					}
+				});
+			} else {
+				$('select#chat-user').find('option:not(:first)').remove();
+				socket.emit('car_info', current_plugin_pid, -1);
+			}
 		});
 
 		$("select#chat-user").change(function() {
@@ -157,9 +177,9 @@
 				socket.emit('chat', current_plugin_pid, -1, chat.val());
 				type = 'warning';
 			} else {
-				$.each($("select#chat-user").val(), function(index, car_id) {
-					if(car_id >= 0) {
-						socket.emit('chat', current_plugin_pid, car_id, chat.val());
+				$("select#chat-user > option:selected").each(function(index, chatuser) {
+					if(Number(chatuser.value) >= 0) {
+						socket.emit('chat', chatuser.getAttribute('data-pid'), chatuser.value, chat.val());
 					} else {
 						socket.emit('chat', current_plugin_pid, -1, chat.val());
 					}
