@@ -92,6 +92,24 @@ module.exports = function(io) {
 			}
 		});
 
+		socket.on('ballast', function(pid, car_id, weight) {
+			if(this.monitor.type === 'monitor') {
+				self.io.to(plugins[pid]).emit('ballast', car_id, weight);
+			}
+		});
+
+		socket.on('kickUser', function(pid, car_id) {
+			if(this.monitor.type === 'monitor') {
+				self.io.to(plugins[pid]).emit('kickUser', car_id);
+			}
+		}); 
+
+		socket.on('banUser', function(pid, car_id) {
+			if(this.monitor.type === 'monitor') {
+				self.io.to(plugins[pid]).emit('banUser', car_id);
+			}
+		}); 
+
 		socket.on('disconnect', function() {
 			info('Client disconnected. (%s, PID : %d)', this.monitor.type, (this.monitor.pid || -1));
 

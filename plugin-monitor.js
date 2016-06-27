@@ -23,6 +23,20 @@ module.exports = function(plugin, debug, info) {
 				this.emit('car_info', plugin.cars[car_id], client_id);
 			}
 		},
+		ballast: function(car_id, weight) {
+			plugin.acsp.adminCommand('/ballast ' + car_id + ' ' + weight);
+
+			var car_info = plugin.cars[car_id];
+			var message = car_info.driver_name + ' is applied to weight penalty ' + weight + 'kg.';
+			plugin.acsp.sendChat(car_id, message);
+			this.emit('chat', 'plugin-'+plugin.options.listen_port, message, 'info');
+		},
+		kickUser: function(car_id) {
+			plugin.acsp.kickUser(car_id);
+		},
+		banUser: function(car_id) {
+			plugin.acsp.adminCommand('/ban ' + car_id);
+		},
 		privateChat: function(car_id, message) {
 			plugin.acsp.sendChat(car_id, message);
 		},

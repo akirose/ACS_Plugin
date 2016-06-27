@@ -29,6 +29,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use('/images', express.static(__dirname + '/webui/images'));
 app.use('/script', express.static(__dirname + '/webui/script'));
 app.use('/style', express.static(__dirname + '/webui/style'));
+app.use('/script/bootbox.min.js', express.static(__dirname + '/node_modules/bootbox/bootbox.min.js'));
 
 app.get('/', function(req, res) {
 	res.render('index');

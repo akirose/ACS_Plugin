@@ -6,13 +6,7 @@
       "server_host": "localhost",
       "server_port": 11000,
       "listen_port": 12000,
-      "welcome_message": "Welcome ACCC Server!\r\nPlease connect to TeamSpeak Server for communication."
-    },
-    {
-      "server_host": "localhost",
-      "server_port": 11001,
-      "listen_port": 12001,
-      "welcome_message": "헐!"
+      "welcome_message": "sasdasdasda"
     }
   ]
 }

@@ -59,45 +59,49 @@
 			if(plugins.size() > 1) {
 				plugins.last().remove();
 			} else {
-				$("div#alert_plugin_remove").modal();
+				bootbox.alert('At least one plug-in must be running.');
 			}
 		});
 
 		$("#write_btn").click(function(e) {
-			var config = { };
-			var plugin_setup = [];
-			
-			// Serialize setup
-			$.each($("#setup").serializeArray(), function(index) {
-				config[this.name] = $.isNumeric(this.value) ? Number(this.value) : this.value;
-			});
+			bootbox.confirm("Do you want to save changes?", function(result) {
+				if(result === false) return;
 
-			// Serialize plug-in setup
-			$("#plugin_setup_form > .panel").each(function(index, obj) {
-				var setup = {};
-				$.each($(this).find(":input").serializeArray(), function() {
-					setup[this.name] = $.isNumeric(this.value) ? Number(this.value) : this.value;
+				var config = { };
+				var plugin_setup = [];
+				
+				// Serialize setup
+				$.each($("#setup").serializeArray(), function(index) {
+					config[this.name] = $.isNumeric(this.value) ? Number(this.value) : this.value;
 				});
-				plugin_setup.push(setup);
-			});
-			config.plugins = plugin_setup;
 
-			$.ajax({
-				contentType: 'application/json',
-				data: $.toJSON(config),
-				dataType: 'json',
-				type: 'POST',
-				url: '/write-setup',
-				beforeSend: function() {
-					$("process_overlay").modal('show');
-				},
-				success: function(data) {
-				},
-				error: function() {
-				},
-				complete: function(xhr, status) {
-					$("process_overlay").modal('hide');
-				}
+				// Serialize plug-in setup
+				$("#plugin_setup_form > .panel").each(function(index, obj) {
+					var setup = {};
+					$.each($(this).find(":input").serializeArray(), function() {
+						setup[this.name] = $.isNumeric(this.value) ? Number(this.value) : this.value;
+					});
+					plugin_setup.push(setup);
+				});
+				config.plugins = plugin_setup;
+				console.log(config);
+				$.ajax({
+					contentType: 'application/json',
+					data: $.toJSON(config),
+					dataType: 'json',
+					type: 'POST',
+					url: '/write-setup',
+					beforeSend: function() {
+						$("process_overlay").modal('show');
+					},
+					success: function(data) {
+					},
+					error: function() {
+					},
+					complete: function(xhr, status) {
+						$("process_overlay").modal('hide');
+					}
+				});
 			});
 		});
 	});
@@ -171,17 +175,4 @@
 </div>
 <div class="row text-center">
 	<button id="write_btn" type="button" class="btn btn-primary btn-lg">Save</button>
-</div>
-<div id="alert_plugin_remove" class="modal fade in" role="dialog">
-	<div class="modal-dialog">
-		<div class="modal-content">
-			<div class="modal-header">
-				<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-				<h4>Alert</h4>
-			</div>
-			<div class="modal-body">
-				<p>At least one plug-in must be running.</p>
-			</div>
-		</div>
-	</div>
 </div>
