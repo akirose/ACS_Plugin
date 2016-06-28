@@ -201,10 +201,11 @@
 				bootbox.alert("Please select one.")
 			} else {
 				bootbox.prompt("Ballast weight?", function(weight) {
-					if(typeof weight === 'undefined') return;
-
-					weight = Number(weight);
-					if(weight < 0) return;
+					if(weight === null) return;
+					else if(!$.isNumeric(weight) || Number(weight) < 0 || Number(weight) > 200) {
+						bootbox.alert("Ballast can only use numbers from '0-200'.");
+						return;
+					}
 
 					var car_id = Number(selected.val());
 					var pid = selected.attr('data-pid');

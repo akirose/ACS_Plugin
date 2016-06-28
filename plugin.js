@@ -111,9 +111,11 @@ plugin.prototype.client_loaded = function(car_id) {
 
 	this._welcome_message(car_id);
 	this._ballast(car_id).then(function(driver_info) {
-		var message = driver_info.name + ' is applied to weight penalty ' + driver_info.ballast + 'kg.';
-		self.acsp.sendChat(car_id, message);
-		self.monitor.emit('chat', 'plugin-'+self.options.listen_port, message, 'info');
+		if(driver_info.ballast > 0) {
+			var message = driver_info.name + ' is applied to weight penalty ' + driver_info.ballast + 'kg.';
+			self.acsp.sendChat(car_id, message);
+			self.monitor.emit('chat', 'plugin-'+self.options.listen_port, message, 'info');
+		}
 	});
 
 	this.monitor.emit('car_info', car_info);
@@ -148,7 +150,7 @@ plugin.prototype._ballast = function(car_id) {
 		process.on('message', handler);
 	}).timeout(1000)
 	.then(function(driver_info) {
-		if(driver_info.ballast > 0) {
+		if(Number(driver_info.ballast) > 0) {
 			self.acsp.adminCommand('/ballast ' + car_id + ' ' + driver_info.ballast);
 		}
 		return driver_info;

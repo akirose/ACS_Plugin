@@ -9,6 +9,7 @@ var plugins = {};
 
 var config = low('config.json', {storage: require('lowdb/lib/file-sync')});
 var db = low('data.json', {storage: require('lowdb/lib/file-sync')});
+db.defaults({ drivers: [] }).value();
 
 /* Run http server */
 var http_listen_port = (config.get('http_listen_port').cloneDeep().value() || 3000);
@@ -75,21 +76,13 @@ var launch_plugin = function(options) {
 				switch(message.command) {
 					case "add_driver_info":
 						var driver_info = message.data;
-						var filtered = db.get('drivers')
-											.filter({ guid: driver_info.guid })
-											.size().value();
-						if(filtered > 0) {
-							if(filtered == 1) {
-								driver_info = db.get('drivers').find({ guid: driver_info.guid }).assign(driver_info).value();
-							} else {
-								db.get('drivers').remove({ guid: driver_info.guid });
-								filtered = 0;
-							}
-						}
-
-						if(filtered == 0) {
-							driver_info = _.assign(driver_info, { ballast : 0 });
-							db.get('drivers').push(driver_info);
+						var find = db.get('drivers').find({ guid: driver_info.guid }).value();
+						console.log(find);
+						if(typeof find === 'undefined') {
+							driver_info = _.assign(driver_info, { ballast: 0 });
+							db.get('drivers').push(driver_info).value();
+						} else {
+							driver_info = db.get('drivers').find({ guid: driver_info.guid }).assign(driver_info).value();
 						}
 					break;
 					case "driver_info":
