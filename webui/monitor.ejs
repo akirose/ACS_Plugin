@@ -195,12 +195,14 @@
 			var chatuser = $("select#chat-user");
 			var selected = chatuser.find("option:selected");
 
-			/*if(selected.size() > 1 || Number(selected.val()) === -1) {
+			if(selected.size() > 1 || Number(selected.val()) === -1) {
 				bootbox.alert("Only one penalty at a time can be applied. Please select only one.");
 			} else if(selected.size() === 0) {
 				bootbox.alert("Please select one.")
-			} else*/ {
+			} else {
 				bootbox.prompt("Ballast weight?", function(weight) {
+					if(typeof weight === 'undefined') return;
+
 					weight = Number(weight);
 					if(weight < 0) return;
 
@@ -212,13 +214,23 @@
 		});
 
 		$("#kick_btn, #ban_btn").click(function(e) {
+			var self = this;
+			var chatuser = $("select#chat-user");
+			var selected = chatuser.find("option:selected");
+
 			if(selected.size() > 1 || Number(selected.val()) === -1) {
-				bootbox.alert("Only one penalty at a time can be applied. Please select only one.");
+				bootbox.alert("Please select only one.");
 			} else if(selected.size() === 0) {
 				bootbox.alert("Please select one.")
 			} else {
-				var command = $(this).text().toLower() + 'User';
-				socket.emit(command, pid, car_id);
+				bootbox.confirm("Are you sure you want to kick " + selected.text(), function(result) {
+					if(result === false) return;
+
+					var command = $(self).text().toLowerCase() + 'User';
+					var car_id = Number(selected.val());
+					var pid = selected.attr('data-pid');
+					socket.emit(command, pid, car_id);
+				});
 			}
 		});
 		/*
