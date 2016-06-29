@@ -2,7 +2,9 @@ const acsp = require('./acsp.js')
 	, _ = require('lodash')
 	, Promise = require('bluebird')
 	, EventEmitter = require('events').EventEmitter
+	, low = require('lowdb')
 	, util = require('util')
+	, moment = require('moment')
 	, debug = require('debug')('acs-plugin:debug-' + process.pid)
 	, info = require('debug')('acs-plugin:info-' + process.pid)
 	, io = require('socket.io-client')
@@ -13,8 +15,10 @@ var plugin = function(options) {
 
 	this.options = options;
 	this.acsp = acsp(options);
+	this.incident = low('results/result_' + options.listen_port + '_' + moment().format('YYYYMMDDHHmmssSSS') + '.json' , {storage: require('lowdb/lib/file-sync')});
 
 	this.cars = {};
+	this.session = {};
 
 	// Connect to monitor socket
 	this.monitor = io('http://localhost:' + options.monitor_port + '/monitor');
@@ -24,7 +28,6 @@ var plugin = function(options) {
 
 		// Attach monitor socket handlers
 		_.forEach(monitor(self, debug, info), function(value, key) {
-			debug('Attach event listener \'%s\' to monitor socket.', key);
 			self.monitor.on(key, value);
 		});
 
@@ -37,6 +40,9 @@ var plugin = function(options) {
 					clearInterval(global.timer);
 					delete global.timer;
 				}
+
+				// calculate session start time
+				self._session_start_at();
 
 				var i = 0;
 				handler = function(car_info) {
@@ -79,6 +85,14 @@ var plugin = function(options) {
 			}
 		});
 	}	
+}
+plugin.prototype.new_session = function() {
+	this._session_start_at();
+}
+
+plugin.prototype._session_start_at = function() {
+	this.session.startAt = moment().subtract((Number(session_info.elapsed_ms) / 1000), 'seconds');
+	debug('Current session start at %s', this.session.startAt.format('YYYY-MM-DD HH:mm:ss.SSS'));
 }
 
 // New client connected.
@@ -180,39 +194,10 @@ process.on('message', function(message) {
 });
 
 // Process SIGNAL Event Listening
+process.on('SIGINT', function() {
+	process.exit();
+})
 process.on('SIGTERM', function() {
 	console.log("Stop ACS Plug-in.");
 	process.exit();
 });
-
-/*
-global.config = JSON.parse(fs.readFileSync('config.json', 'utf8'));
-
-var welcome_message = [];
-var wmArr = config.welcome_message.split("\n");
-for(var idx in wmArr) {
-	welcome_message.push(wmArr[idx].trim());
-}
-
-var plugin_config = config.plugins[process.argv[2]];
-wmArr = plugin_config.welcome_message.split("\n");
-for(var idx in wmArr) {
-	welcome_message.push(wmArr[idx].trim());
-}
-config.welcome_message = welcome_message;
-
-// Assetto Corsa Server Protocol
-var ac = acsp(plugin_config);
-ac.setMaxListeners(0);
-
-// ACCC Plug-in
-var plugin = accc(ac);
-
-ac.once('listening', function() {
-	plugin.init();
-	ac.emit('listening');
-
-	console.log("ACS Plug-in Running (PID : " + process.pid + ")");
-}).on('error', function(e) {
-});
-*/

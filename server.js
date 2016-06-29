@@ -11,14 +11,28 @@ var config = low('config.json', {storage: require('lowdb/lib/file-sync')});
 var db = low('data.json', {storage: require('lowdb/lib/file-sync')});
 db.defaults({ drivers: [] }).value();
 
+/* check exists results */
+try {
+	if(!fs.statSync('results').isDirectory()) {
+		fs.mkdir('results', 0o744);
+	}
+} catch(e) {
+	if(e.code === 'ENOENT') {
+		fs.mkdir('results', 0o744);
+	}
+}
+
+
 /* Run http server */
 var http_listen_port = (config.get('http_listen_port').cloneDeep().value() || 3000);
 var webServer = (function httpServer(port, _handle_http_server) {
 	return child_process.fork("httpserver.js", [port])
 		.on("message", _handle_http_server)
 		.on("exit", (code, signal) => {
-			info("Restarting Http Server");
-			webServer = httpServer(port, _handle_http_server);
+			if(Number(code) > 0) {
+				info("Restarting Http Server (%s, %s)", code, signal);
+				webServer = httpServer(port, _handle_http_server);
+			}
 		});
 })((http_listen_port || 3000), function(message) {
 	if(typeof message !== 'object' || typeof message.command !== 'string') return;
@@ -118,5 +132,12 @@ var stop_plugin = function() {
 
 // Process SIGNAL Event Listening
 process.on('SIGINT', function() {
-	process.exit();
+	(function(callback) {
+		callback();
+		setInterval(callback, 1000);
+	}(function() {
+		if(Object.keys(plugins).length === 0) {
+			process.exit();
+		}
+	}));
 });
