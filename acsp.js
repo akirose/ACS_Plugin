@@ -68,10 +68,6 @@ ACSP.NEXT_SESSION              = 207;
 ACSP.RESTART_SESSION           = 208;
 ACSP.ADMIN_COMMAND             = 209;
 
-ACSP.SESST_PRACTICE            = 1;
-ACSP.SESST_QUALIFY             = 2;
-ACSP.SESST_RACE                = 3;
-
 /**
  * [private] Send packet to AC server
  * @param  {Buffer} buf Contents of the message

@@ -1,21 +1,24 @@
 const acsp = require('./acsp.js')
 	, _ = require('lodash')
+	, fs = require('fs')
 	, Promise = require('bluebird')
 	, EventEmitter = require('events').EventEmitter
 	, low = require('lowdb')
 	, util = require('util')
 	, moment = require('moment')
+	, moment_duration_plugin = require("moment-duration-format")
 	, debug = require('debug')('acs-plugin:debug-' + process.pid)
 	, info = require('debug')('acs-plugin:info-' + process.pid)
 	, io = require('socket.io-client')
 	, monitor = require('./plugin-monitor.js');
+
+const SESSION_TYPE = { '1': 'PRACITCE', '2': 'QUALIFY', '3': 'RACE' };
 
 var plugin = function(options) {
 	var self = this;
 
 	this.options = options;
 	this.acsp = acsp(options);
-	this.incident = low('results/result_' + options.listen_port + '_' + moment().format('YYYYMMDDHHmmssSSS') + '.json' , {storage: require('lowdb/lib/file-sync')});
 
 	this.cars = {};
 	this.session = {};
@@ -41,14 +44,17 @@ var plugin = function(options) {
 					delete global.timer;
 				}
 
-				// calculate session start time
-				self._session_start_at();
+				// init current session
+				self._init_session(session_info);
 
 				var i = 0;
 				handler = function(car_info) {
 						i++;
 						if(car_info.is_connected == true) {
+							car_info = _.assign(car_info, { incident: 0 });
 							self.cars[car_info.car_id] = car_info;
+							self.result.get('cars').push(_.cloneDeep(car_info)).value();
+
 							process.send({ command: 'add_driver_info', data: { name: car_info.driver_name, guid: car_info.driver_guid } });
 							self.monitor.emit('car_info', car_info);
 						}
@@ -86,20 +92,51 @@ var plugin = function(options) {
 		});
 	}	
 }
-plugin.prototype.new_session = function() {
-	this._session_start_at();
+
+plugin.prototype._init_session = function(session_info) {
+	// set current session info
+	this.session = session_info;
+
+	// calculate session start time
+	this._session_start_at(Number(session_info.elapsed_ms));
+
+	this.result = low();
+	this.result.defaults({ 
+			server_name: session_info.server_name,
+			session_type: SESSION_TYPE[session_info.session_type],
+			track: session_info.track,
+			track_config: session_info.track_config,
+			cars: [],
+			collisions: {
+				with_env: [],
+				with_car: []
+			}
+		}).value();
 }
 
-plugin.prototype._session_start_at = function() {
-	this.session.startAt = moment().subtract((Number(session_info.elapsed_ms) / 1000), 'seconds');
-	debug('Current session start at %s', this.session.startAt.format('YYYY-MM-DD HH:mm:ss.SSS'));
+plugin.prototype.new_session = function(session_info) {
+	this._init_session(session_info);
+}
+plugin.prototype._session_start_at = function(elapsed_ms) {
+	this.session.startAt = moment().subtract((elapsed_ms / 1000), 'seconds');
+	debug('Current session start at %s. (elapsed : %s)', 
+			this.session.startAt.format('YYYY-MM-DD HH:mm:ss.SSS'), 
+			moment.duration(moment().diff(this.session.startAt)).format('h:mm:ss.SSS'));
+}
+
+plugin.prototype.end_session = function(result_filename) {
+	var dest = 'results/' + this.session.startAt.format('yyyyMMdd_hhmm') + '-' + this.options.listen_port + '-' + SESSION_TYPE[this.session.type] + '.json';
+	fs.writeFileSync(dest, JSON.stringfy(this.result.getState()));
+	debug('end session (%s)', result_filename);
 }
 
 // New client connected.
 plugin.prototype.new_connection = function(car_info) {
+	car_info = _.assign(car_info, { incident: 0 });
 	this.cars[car_info.car_id] = car_info;
-	process.send({ command: 'add_driver_info', data: { name: car_info.driver_name, guid: car_info.driver_guid } });
+	this.result.get('cars').push(_.cloneDeep(car_info)).value();
 
+	process.send({ command: 'add_driver_info', data: { name: car_info.driver_name, guid: car_info.driver_guid } });
 	this.monitor.emit('new_connection', car_info);
 }
 
@@ -195,9 +232,9 @@ process.on('message', function(message) {
 
 // Process SIGNAL Event Listening
 process.on('SIGINT', function() {
-	process.exit();
-})
+	process.exit(0);
+});
 process.on('SIGTERM', function() {
 	console.log("Stop ACS Plug-in.");
-	process.exit();
+	process.exit(0);
 });
