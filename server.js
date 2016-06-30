@@ -91,7 +91,6 @@ var launch_plugin = function(options) {
 					case "add_driver_info":
 						var driver_info = message.data;
 						var find = db.get('drivers').find({ guid: driver_info.guid }).value();
-						console.log(find);
 						if(typeof find === 'undefined') {
 							driver_info = _.assign(driver_info, { ballast: 0 });
 							db.get('drivers').push(driver_info).value();

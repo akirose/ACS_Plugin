@@ -54,7 +54,13 @@ var plugin = function(options) {
 						if(car_info.is_connected == true) {
 							car_info = _.assign(car_info, { incident: 0 });
 							self.cars[car_info.car_id] = car_info;
-							self.result.get('cars').push(_.cloneDeep(car_info)).value();
+
+							var result_info = self.result.get('cars').find({ driver_guid: car_info.driver_guid }).value();
+							if(typeof result_info === 'object') {
+								car_info.incident = result_info.incident;
+							} else {
+								self.result.get('cars').push(_.cloneDeep(car_info)).value();
+							}
 
 							process.send({ command: 'add_driver_info', data: { name: car_info.driver_name, guid: car_info.driver_guid } });
 							self.monitor.emit('car_info', car_info);
@@ -158,6 +164,7 @@ plugin.prototype.end_session = function(result_filename) {
 plugin.prototype.new_connection = function(car_info) {
 	car_info = _.assign(car_info, { incident: 0 });
 	this.cars[car_info.car_id] = car_info;
+
 	this.result.get('cars').push(_.cloneDeep(car_info)).value();
 
 	process.send({ command: 'add_driver_info', data: { name: car_info.driver_name, guid: car_info.driver_guid } });
@@ -244,12 +251,16 @@ plugin.prototype.collision_with_env = function(client_event) {
 	this.monitor.emit('chat', 'plugin-'+this.options.listen_port, message, 'warning');
 	this.acsp.sendChat(car_info.car_id, message);
 
+	var session_time = moment.duration(moment().diff(this.session.startAt)).format('HH:mm:ss.SSS');
+
 	this.result.get('cars').find({ driver_guid: car_info.driver_guid }).assign(car_info).value();
+	this.result.get('collisions.with_env').push(_.assign(client_event, { driver: { driver_name: car_info.driver_name, driver_guid: car_info.driver_guid }, session_time: session_time })).value();
 	this.result.write();
 }
 
 plugin.prototype.collision_with_car = function(client_event) {
 	car_info = this.cars[client_event.car_id];
+	other_car_info = this.cars[client_event.other_car_id];
 
 	var current_incident = 0;
 	if(client_event.speed < 5) {
@@ -262,10 +273,13 @@ plugin.prototype.collision_with_car = function(client_event) {
 
 	car_info.incident += current_incident;
 
-	var message = car_info.driver_name + ' is collision with ' + this.cars[client_event.other_car_id].driver_name + '. (Incident : x' + current_incident + ', Total : ' + car_info.incident + ')';
+	var message = car_info.driver_name + ' is collision with ' + other_car_info.driver_name + '. (Incident : x' + current_incident + ', Total : ' + car_info.incident + ')';
 	this.monitor.emit('chat', 'plugin-'+this.options.listen_port, message, 'warning');
 	this.acsp.sendChat(car_info.car_id, message);
 
+	var session_time = moment.duration(moment().diff(this.session.startAt)).format('HH:mm:ss.SSS');
+
+	this.result.get('collisions.with_car').push(_.assign(client_event, { driver: { driver_name: car_info.driver_name, driver_guid: car_info.driver_guid }, other_driver: { driver_name: other_car_info.driver_name, driver_guid: other_car_info.driver_guid }, session_time: session_time })).value();
 	this.result.get('cars').find({ driver_guid: car_info.driver_guid }).assign(car_info).value();
 	this.result.write();
 }
