@@ -13,6 +13,7 @@ const acsp = require('./acsp.js')
 	, monitor = require('./plugin-monitor.js');
 
 const SESSION_TYPE = { '1': 'PRACITCE', '2': 'QUALIFY', '3': 'RACE' };
+const INCIDENT_POINT = { environment: 1, very_light : 0, light : 1, heavy : 4 };
 
 var plugin = function(options) {
 	var self = this;
@@ -100,8 +101,33 @@ plugin.prototype._init_session = function(session_info) {
 	// calculate session start time
 	this._session_start_at(Number(session_info.elapsed_ms));
 
-	this.result = low();
+	// current session result filename
+	var filename = 'results/' + this.session.startAt.format('YYYYMMDD_HHmm') + '-' + this.options.listen_port + '-' + SESSION_TYPE[this.session.type] + '.json';
+
+	this.result = low(filename, { storage: {
+		read: function(source) {
+		    var deserialize = arguments.length <= 1 || arguments[1] === undefined ? JSON.parse : arguments[1];
+		    try {
+		    	if(fs.statSync(source).isFile()) {
+		    		var data = fs.readFileSync(source, 'utf-8').trim() || '{}';
+
+		    		try {
+		    			return deserialize(data);
+		    		} catch(e) {
+				        if (e instanceof SyntaxError) {
+				          e.message = 'Malformed JSON in file: ' + source + '\n' + e.message;
+				        }
+				        throw e;
+		    		}
+		    	}
+		    } catch(e) {
+		    	return {};
+		    }
+		},
+		write: require('lowdb/lib/file-sync').write
+	}, writeOnChange: false });
 	this.result.defaults({ 
+			session_start_at: this.session.startAt.format('YYYY-MM-DD HH:mm'),
 			server_name: session_info.server_name,
 			session_type: SESSION_TYPE[session_info.session_type],
 			track: session_info.track,
@@ -125,8 +151,6 @@ plugin.prototype._session_start_at = function(elapsed_ms) {
 }
 
 plugin.prototype.end_session = function(result_filename) {
-	var dest = 'results/' + this.session.startAt.format('yyyyMMdd_hhmm') + '-' + this.options.listen_port + '-' + SESSION_TYPE[this.session.type] + '.json';
-	fs.writeFileSync(dest, JSON.stringfy(this.result.getState()));
 	debug('end session (%s)', result_filename);
 }
 
@@ -209,6 +233,41 @@ plugin.prototype._ballast = function(car_id) {
 	.finally(function() {
 		process.removeListener('message', handler);
 	});
+}
+
+plugin.prototype.collision_with_env = function(client_event) {
+	car_info = this.cars[client_event.car_id];
+	current_incident = INCIDENT_POINT.environment;
+	car_info.incident += current_incident;
+
+	var message = car_info.driver_name + ' is collision with environment. (Incident : x' + current_incident + ', Total : ' + car_info.incident + ')';
+	this.monitor.emit('chat', 'plugin-'+this.options.listen_port, message, 'warning');
+	this.acsp.sendChat(car_info.car_id, message);
+
+	this.result.get('cars').find({ driver_guid: car_info.driver_guid }).assign(car_info).value();
+	this.result.write();
+}
+
+plugin.prototype.collision_with_car = function(client_event) {
+	car_info = this.cars[client_event.car_id];
+
+	var current_incident = 0;
+	if(client_event.speed < 5) {
+		current_incident = INCIDENT_POINT.very_light;
+	} else if(client_event.speed < 15) {
+		current_incident = INCIDENT_POINT.light;
+	} else {
+		current_incident = INCIDENT_POINT.heavy;
+	}
+
+	car_info.incident += current_incident;
+
+	var message = car_info.driver_name + ' is collision with ' + this.cars[client_event.other_car_id].driver_name + '. (Incident : x' + current_incident + ', Total : ' + car_info.incident + ')';
+	this.monitor.emit('chat', 'plugin-'+this.options.listen_port, message, 'warning');
+	this.acsp.sendChat(car_info.car_id, message);
+
+	this.result.get('cars').find({ driver_guid: car_info.driver_guid }).assign(car_info).value();
+	this.result.write();
 }
 
 plugin.prototype.chat = function(car_id, message) {
