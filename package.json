@@ -1,7 +1,7 @@
 {
     "name": "AC_UDP_PLUGIN",
     "description": "Assetto Corsa UDP Plugin",
-    "version": "0.1.0",
+    "version": "0.1.2",
     "private": true,
     "author": {
         "name": "Maydew",
