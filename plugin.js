@@ -147,7 +147,16 @@ plugin.prototype._init_session = function(session_info) {
 }
 
 plugin.prototype.new_session = function(session_info) {
+	var self = this;
 	this._init_session(session_info);
+
+	_.forEach(this.cars, function(car, key) {
+		car.rtime = 0;
+		car.rlaps = 0;
+		car.bestlap = Number.MAX_VALUE;
+
+		self.result.get('cars').push(car).value();
+	});
 
 	this.monitor.emit('session_info', session_info);
 }
@@ -166,11 +175,11 @@ plugin.prototype._init_car = function(car_info) {
 	car_info = _.assign(car_info, { incident: 0, rlaps: 0, rtime: 0, bestlap: Number.MAX_VALUE });
 	this.cars[car_info.car_id] = car_info;
 
-	var result_info = self.result.get('cars').find({ driver_guid: car_info.driver_guid }).value();
+	var result_info = this.result.get('cars').find({ driver_guid: car_info.driver_guid }).value();
 	if(typeof result_info === 'object') {
 		car_info.incident = result_info.incident;
 	} else {
-		self.result.get('cars').push(_.cloneDeep(car_info)).value();
+		this.result.get('cars').push(_.cloneDeep(car_info)).value();
 	}
 
 	process.send({ command: 'add_driver_info', data: { name: car_info.driver_name, guid: car_info.driver_guid } });
@@ -277,9 +286,22 @@ plugin.prototype.lap_completed = function(lapinfo) {
 		if(!is_first) {
 			this.acsp.sendChat(car_info.car_id, 'New personal best lap time : ' + moment.duration(lap.laptime).format('h:m:ss.SSS'));
 		}
+		var fastest = this.result.get('cars').sortBy('bestlap').take(1).value();
+
+		if(fastest.length > 0 && fastest[0].bestlap !== Number.MAX_VALUE && fastest[0].bestlap > lap.laptime) {
+			if(typeof global.timer === 'object') {
+				clearTimeout(global.timer);
+			}
+
+			global.fastest = setTimeout(function() {
+				this.acsp.broadcastChat('Current session best lap time : ' + moment.duration(lap.laptime).format('h:m:ss.SSS'));
+			}, 5000);
+		}
 	}
 
-	this.result.get('laps').push(lap);
+	this.result.get('cars').find({ driver_guid: car_info.driver_guid }).assign(car_info).value();
+	this.result.get('laps').push(lap).value();
+	this.result.write();
 }
 
 plugin.prototype.collision_with_env = function(client_event) {
