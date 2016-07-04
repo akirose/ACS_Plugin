@@ -29,7 +29,7 @@ module.exports = function(plugin, debug, info) {
 			var car_info = plugin.cars[car_id];
 			var message = car_info.driver_name + ' is applied to weight penalty ' + weight + 'kg.';
 			plugin.acsp.sendChat(car_id, message);
-			this.emit('chat', 'plugin-'+plugin.options.listen_port, message, 'info');
+			this.emit('chat', plugin.plugin_name, message, 'info');
 		},
 		kickUser: function(car_id) {
 			plugin.acsp.kickUser(car_id);

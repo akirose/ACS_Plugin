@@ -123,6 +123,8 @@
 		});
 
 		socket.on('chat', function(pid, name, message, type) {
+			if(current_plugin_pid !== -1 && current_plugin_pid !== Number(pid)) return;
+
 			$.chat(name, message, type);
 		});
 
