@@ -287,11 +287,11 @@ ACSP.prototype._handleMessage = function(buf, rinfo) {
 			};
 
 			lapinfo.leaderboard = [];
-			for(var i = 0; i < lapinfo.cars_count; i++) {
+			for(var i = 0; i < Number(lapinfo.cars_count); i++) {
 				lapinfo.leaderboard.push({
 					rcar_id: buf.nextUInt8(),
 					rtime: buf.nextUInt32LE(),
-					rlaps: buf.nextUInt8()
+					rlaps: buf.nextUInt16LE()
 				});
 			}
 			lapinfo.grip_level = buf.nextFloatLE();

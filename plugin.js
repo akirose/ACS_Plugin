@@ -2,7 +2,6 @@ const acsp = require('./acsp.js')
 	, _ = require('lodash')
 	, fs = require('fs')
 	, Promise = require('bluebird')
-	, EventEmitter = require('events').EventEmitter
 	, low = require('lowdb')
 	, util = require('util')
 	, moment = require('moment')
@@ -22,6 +21,7 @@ var plugin = function(options) {
 
 	this.options = options;
 	this.acsp = acsp(options);
+	this.acsp.setMaxListener(0);
 
 	this.cars = {};
 	this.session = {};
@@ -267,6 +267,7 @@ plugin.prototype.lap_completed = function(lapinfo) {
 	var self = this;
 	var car_info = this.cars[lapinfo.car_id];
 	var rlapinfo = _.find(lapinfo.leaderboard, { rcar_id: lapinfo.car_id });
+
 	var lap = { car_id: car_info.car_id,
 				driver_name: car_info.driver_name, 
 				driver_guid: car_info.driver_guid,
@@ -294,7 +295,7 @@ plugin.prototype.lap_completed = function(lapinfo) {
 			}
 
 			global.fastest = setTimeout(function() {
-				this.acsp.broadcastChat('Current session best lap time : ' + moment.duration(lap.laptime).format('h:m:ss.SSS'));
+				self.acsp.broadcastChat('Current session best lap time : ' + moment.duration(lap.laptime).format('h:m:ss.SSS'));
 			}, 5000);
 		}
 	}
