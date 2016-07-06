@@ -14,6 +14,9 @@ const acsp = require('./acsp.js')
 const SESSION_TYPE = { '1': 'PRACITCE', '2': 'QUALIFY', '3': 'RACE' };
 const INCIDENT_POINT = { environment: 0, very_light : 0, light : 1, heavy : 4 };
 
+// set infinity
+process.setMaxListeners(0);
+
 var plugin = function(options) {
 	var self = this;
 
@@ -21,7 +24,7 @@ var plugin = function(options) {
 
 	this.options = options;
 	this.acsp = acsp(options);
-	this.acsp.setMaxListener(0);
+	this.acsp.setMaxListeners(0);
 
 	this.cars = {};
 	this.session = {};
@@ -63,7 +66,7 @@ var plugin = function(options) {
 				fail = function(e) {
 					self._bind();
 					_.forEach(self.cars, function(car_info, key) {
-						self._ballast(car_info.car_id);
+						self._ballast(car_info.car_id).error(function(e){});
 					});
 				}
 				self.acsp.getCarInfo(i).then(handler, fail);
@@ -97,6 +100,8 @@ plugin.prototype._init_session = function(session_info) {
 	if(typeof this.session === 'object') {
 		if(this.session.current_session_index > session_info.current_session_index) {
 			debug("Server session loop.");
+
+			console.log(session_info);
 		}
 	}
 
@@ -132,9 +137,14 @@ plugin.prototype._init_session = function(session_info) {
 		write: require('lowdb/lib/file-sync').write
 	}, writeOnChange: false });
 	this.result.defaults({ 
-			session_start_at: this.session.startAt.format('YYYY-MM-DD HH:mm'),
 			server_name: session_info.server_name,
-			session_type: SESSION_TYPE[session_info.session_type],
+			session_start_at: this.session.startAt.unix(),
+			session_index: session_info.current_session_index,
+			session_count: session_info.session_count,
+			session_type: session_info.type,
+			session_time: session_info.time,
+			race_laps: session_info.laps,
+			wait_time: session_info.wait_time,
 			track: session_info.track,
 			track_config: session_info.track_config,
 			cars: [],
@@ -164,7 +174,7 @@ plugin.prototype._session_start_at = function(elapsed_ms) {
 	this.session.startAt = moment().subtract((elapsed_ms / 1000), 'seconds');
 	debug('Current session start at %s. (elapsed : %s)', 
 			this.session.startAt.format('YYYY-MM-DD HH:mm:ss.SSS'), 
-			moment.duration(moment().diff(this.session.startAt)).format('h:mm:ss.SSS'));
+			this.session.elapsed_ms);
 }
 
 plugin.prototype.end_session = function(result_filename) {
@@ -219,7 +229,7 @@ plugin.prototype.client_loaded = function(car_id) {
 			self.acsp.sendChat(car_id, message);
 			self.monitor.emit('chat', self.plugin_name, message, 'info');
 		}
-	});
+	}, function(error) {});
 
 	this.monitor.emit('car_info', car_info);
 }
@@ -238,6 +248,7 @@ plugin.prototype._ballast = function(car_id) {
 	var car_info = this.cars[car_id];
 	process.send({ command: 'driver_info', data: car_info.driver_guid });
 
+	var handler;
 	return new Promise(function(resolve, reject) {
 		handler = function(message) {
 			if(typeof message !== 'object' || typeof message.command !== 'string') return;
@@ -314,7 +325,7 @@ plugin.prototype.collision_with_env = function(client_event) {
 	this.monitor.emit('chat', this.plugin_name, message, 'warning');
 	this.acsp.sendChat(car_info.car_id, message);
 
-	var session_time = moment.duration(moment().diff(this.session.startAt)).format('HH:mm:ss.SSS');
+	var session_time = moment().diff(this.session.startAt);
 
 	this.result.get('cars').find({ driver_guid: car_info.driver_guid }).assign(car_info).value();
 	this.result.get('collisions.with_env').push(_.assign(client_event, { driver: { driver_name: car_info.driver_name, driver_guid: car_info.driver_guid }, session_time: session_time })).value();
@@ -340,7 +351,7 @@ plugin.prototype.collision_with_car = function(client_event) {
 	this.monitor.emit('chat', this.plugin_name, message, 'warning');
 	this.acsp.sendChat(car_info.car_id, message);
 
-	var session_time = moment.duration(moment().diff(this.session.startAt)).format('HH:mm:ss.SSS');
+	var session_time = moment().diff(this.session.startAt);
 
 	this.result.get('collisions.with_car').push(_.assign(client_event, { driver: { driver_name: car_info.driver_name, driver_guid: car_info.driver_guid }, other_driver: { driver_name: other_car_info.driver_name, driver_guid: other_car_info.driver_guid }, session_time: session_time })).value();
 	this.result.get('cars').find({ driver_guid: car_info.driver_guid }).assign(car_info).value();

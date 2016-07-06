@@ -38,6 +38,8 @@
 
 			// current session information
 			this.emit('session_info', plugin_info.pid);
+
+			var handler;
 			new Promise(function(resolve, reject) {
 					handler = function(pid, session_info) {
 						if(plugin_info.pid === pid && session_info.session_index === session_info.current_session_index)  {

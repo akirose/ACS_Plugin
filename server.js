@@ -5,6 +5,8 @@ const _ = require('lodash')
 	, debug = require('debug')('acs-main:debug')
 	, info = require('debug')('acs-main:info');
 
+process.setMaxListeners(0);
+
 var plugins = {};
 
 var config = low('config.json', {storage: require('lowdb/lib/file-sync')});

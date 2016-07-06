@@ -24,10 +24,14 @@
 			});
 
 			$("#stop_plugin_btn").click(function() {
-				$("#progress_overlay").modal('show');
-				$.get("/stop_plugin", function() {
-				}).always(function() {
-					setTimeout(function() { $("#progress_overlay").modal('hide'); }, 800);
+				bootbox.confirm("Are you sure you want to stop all plugins?", function(result) {
+					if(result === false) return;
+
+					$("#progress_overlay").modal('show');
+					$.get("/stop_plugin", function() {
+					}).always(function() {
+						setTimeout(function() { $("#progress_overlay").modal('hide'); }, 500);
+					});
 				});
 			});
 		});
