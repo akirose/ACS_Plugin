@@ -240,6 +240,11 @@ ACSP.prototype._handleMessage = function(buf, rinfo) {
 				elapsed_ms: buf.nextInt32LE()
 			};
 
+			// correct wait_time 
+			if((session_info.wait_time % 1000) > 0) {
+				session_info.wait_time += 0x10000;
+			}
+
 			this.emit('session_info', session_info);
 			if(packet_id == ACSP.NEW_SESSION) { this.emit('new_session', session_info); }
 			break;

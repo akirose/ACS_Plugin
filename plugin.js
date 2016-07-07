@@ -93,6 +93,9 @@ var plugin = function(options) {
 				self.acsp.on(key, function() { callback.apply(self, arguments) });
 			}
 		});
+		this._bind = function() {
+			debug('ACS event listener has already been added.')
+		}
 	}	
 }
 
@@ -100,16 +103,17 @@ plugin.prototype._init_session = function(session_info) {
 	if(typeof this.session === 'object') {
 		if(this.session.current_session_index > session_info.current_session_index) {
 			debug("Server session loop.");
-
-			console.log(session_info);
 		}
 	}
 
 	// set current session info
-	this.session = session_info;
+	this.session = _.cloneDeep(session_info);
 
 	// calculate session start time
-	this._session_start_at(Number(session_info.elapsed_ms));
+	this.session.startAt = moment().subtract(this.session.elapsed_ms, 'milliseconds').subtract(this.session.wait_time, 'milliseconds');
+	debug('Current session start at %s. (elapsed : %s)', 
+			this.session.startAt.format('YYYY-MM-DD HH:mm:ss.SSS'), 
+			this.session.elapsed_ms);
 
 	// current session result filename
 	var filename = 'results/' + this.session.startAt.format('YYYYMMDD_HHmm') + '-' + this.options.listen_port + '-' + SESSION_TYPE[this.session.type] + '.json';
@@ -169,12 +173,6 @@ plugin.prototype.new_session = function(session_info) {
 	});
 
 	this.monitor.emit('session_info', session_info);
-}
-plugin.prototype._session_start_at = function(elapsed_ms) {
-	this.session.startAt = moment().subtract((elapsed_ms / 1000), 'seconds');
-	debug('Current session start at %s. (elapsed : %s)', 
-			this.session.startAt.format('YYYY-MM-DD HH:mm:ss.SSS'), 
-			this.session.elapsed_ms);
 }
 
 plugin.prototype.end_session = function(result_filename) {
