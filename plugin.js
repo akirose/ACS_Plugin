@@ -58,8 +58,8 @@ var plugin = function(options) {
 						i++;
 						if(car_info.is_connected == true) {
 							self._init_car(car_info);
-
 							self.monitor.emit('car_info', car_info);
+							process.send({ command: 'add_driver_info', data: { name: car_info.driver_name, guid: car_info.driver_guid } });
 						}
 						self.acsp.getCarInfo(i).then(handler, fail);
 					}
@@ -100,11 +100,13 @@ var plugin = function(options) {
 }
 
 plugin.prototype._init_session = function(session_info) {
-	if(typeof this.session === 'object') {
+	if(typeof this.session.current_session_index === 'number') {
 		if(this.session.current_session_index > session_info.current_session_index) {
 			debug("Server session loop.");
 		}
 	}
+
+	this.cars = {};
 
 	// set current session info
 	this.session = _.cloneDeep(session_info);
@@ -162,14 +164,12 @@ plugin.prototype._init_session = function(session_info) {
 
 plugin.prototype.new_session = function(session_info) {
 	var self = this;
+	var cars = _.cloneDeep(this.cars);
+
 	this._init_session(session_info);
 
-	_.forEach(this.cars, function(car, key) {
-		car.rtime = 0;
-		car.rlaps = 0;
-		car.bestlap = Number.MAX_VALUE;
-
-		self.result.get('cars').push(car).value();
+	_.forEach(cars, function(car, key) {
+		self._init_car(car);
 	});
 
 	this.monitor.emit('session_info', session_info);
@@ -180,23 +180,33 @@ plugin.prototype.end_session = function(result_filename) {
 }
 
 plugin.prototype._init_car = function(car_info) {
-	car_info = _.assign(car_info, { incident: 0, rlaps: 0, rtime: 0, bestlap: Number.MAX_VALUE });
-	this.cars[car_info.car_id] = car_info;
-
-	var result_info = this.result.get('cars').find({ driver_guid: car_info.driver_guid }).value();
-	if(typeof result_info === 'object') {
-		car_info.incident = result_info.incident;
-	} else {
-		this.result.get('cars').push(_.cloneDeep(car_info)).value();
+	var info = {
+		car_id: car_info.car_id,
+		car_model: car_info.car_model,
+		car_skin: car_info.car_skin,
+		driver_name: car_info.driver_name,
+		driver_guid: car_info.driver_guid,
+		incident: 0,
+		rlaps: 0,
+		rtime: 0,
+		bestlap: Number.MAX_VALUE,
+		ballast: 0
 	}
 
-	process.send({ command: 'add_driver_info', data: { name: car_info.driver_name, guid: car_info.driver_guid } });
+	var _f = { 'car_id': info.car_id, 'driver_name': info.driver_name, 'driver_guid': info.driver_guid };
+	var car_count = this.result.get('cars').filter(_f).size().value();
+	if(car_count === 0) {
+		this.result.get('cars').push(_.cloneDeep(info)).value();
+	} else {
+		this.cars[info.car_id] = this.result.get('cars').find(_f).value();
+	}
 }
 
 // New client connected.
 plugin.prototype.new_connection = function(car_info) {
 	this._init_car(car_info);
 
+	process.send({ command: 'add_driver_info', data: { name: info.driver_name, guid: info.driver_guid } });
 	this.monitor.emit('new_connection', car_info);
 }
 
@@ -264,6 +274,7 @@ plugin.prototype._ballast = function(car_id) {
 	.then(function(driver_info) {
 		if(Number(driver_info.ballast) > 0) {
 			self.acsp.adminCommand('/ballast ' + car_id + ' ' + driver_info.ballast);
+			self.cars[car_id].ballast = driver_info.ballast;
 		}
 		return driver_info;
 	})
@@ -309,50 +320,63 @@ plugin.prototype.lap_completed = function(lapinfo) {
 		}
 	}
 
-	this.result.get('cars').find({ driver_guid: car_info.driver_guid }).assign(car_info).value();
+	//this.result.get('cars').find({ driver_guid: car_info.driver_guid }).assign(car_info).value();
 	this.result.get('laps').push(lap).value();
 	this.result.write();
 }
 
 plugin.prototype.collision_with_env = function(client_event) {
-	car_info = this.cars[client_event.car_id];
-	current_incident = INCIDENT_POINT.environment;
-	car_info.incident += current_incident;
-
-	var message = car_info.driver_name + ' is collision with environment. (Incident : x' + current_incident + ', Total : ' + car_info.incident + ')';
-	this.monitor.emit('chat', this.plugin_name, message, 'warning');
-	this.acsp.sendChat(car_info.car_id, message);
-
+	var car_info = this.cars[client_event.car_id];
 	var session_time = moment().diff(this.session.startAt);
 
-	this.result.get('cars').find({ driver_guid: car_info.driver_guid }).assign(car_info).value();
+	var collisions = this.result.get('collisions.with_env')
+					.filter({ car_id: client_event.car_id })
+					.filter(_.conforms({ 'session_time': function(n) { return (session_time-2000) < n; } }))
+					.value();
+
+	if(collisions.length === 0) {
+		var current_incident = INCIDENT_POINT.environment;
+		car_info.incident += current_incident;
+
+		var message = car_info.driver_name + ' is collision with environment. (Incident : x' + current_incident + ', Total : ' + car_info.incident + ')';
+		this.monitor.emit('chat', this.plugin_name, message, 'warning');
+		this.acsp.sendChat(car_info.car_id, message);
+	}
+
 	this.result.get('collisions.with_env').push(_.assign(client_event, { driver: { driver_name: car_info.driver_name, driver_guid: car_info.driver_guid }, session_time: session_time })).value();
+	//this.result.get('cars').find({ driver_guid: car_info.driver_guid }).assign({ 'incident': car_info.incident }).value();
 	this.result.write();
 }
 
 plugin.prototype.collision_with_car = function(client_event) {
-	car_info = this.cars[client_event.car_id];
-	other_car_info = this.cars[client_event.other_car_id];
-
-	var current_incident = 0;
-	if(client_event.speed < 5) {
-		current_incident = INCIDENT_POINT.very_light;
-	} else if(client_event.speed < 15) {
-		current_incident = INCIDENT_POINT.light;
-	} else {
-		current_incident = INCIDENT_POINT.heavy;
-	}
-
-	car_info.incident += current_incident;
-
-	var message = car_info.driver_name + ' is collision with ' + other_car_info.driver_name + '. (Incident : x' + current_incident + ', Total : ' + car_info.incident + ')';
-	this.monitor.emit('chat', this.plugin_name, message, 'warning');
-	this.acsp.sendChat(car_info.car_id, message);
-
+	var car_info = this.cars[client_event.car_id];
+	var other_car_info = this.cars[client_event.other_car_id];
 	var session_time = moment().diff(this.session.startAt);
 
+	var collisions = this.result.get('collisions.with_car')
+					.filter({ car_id: client_event.car_id, other_car_id: client_event.other_car_id })
+					.filter(_.conforms({ 'session_time': function(n) { return (session_time-2000) < n; } }))
+					.value();
+
+	if(collisions.length === 0) {
+		var current_incident = 0;
+		if(client_event.speed < 5) {
+			current_incident = INCIDENT_POINT.very_light;
+		} else if(client_event.speed < 15) {
+			current_incident = INCIDENT_POINT.light;
+		} else {
+			current_incident = INCIDENT_POINT.heavy;
+		}
+
+		car_info.incident += current_incident;
+
+		var message = car_info.driver_name + ' is collision with ' + other_car_info.driver_name + '. (Incident : x' + current_incident + ', Total : ' + car_info.incident + ')';
+		this.monitor.emit('chat', this.plugin_name, message, 'warning');
+		this.acsp.sendChat(car_info.car_id, message);
+	}
+
 	this.result.get('collisions.with_car').push(_.assign(client_event, { driver: { driver_name: car_info.driver_name, driver_guid: car_info.driver_guid }, other_driver: { driver_name: other_car_info.driver_name, driver_guid: other_car_info.driver_guid }, session_time: session_time })).value();
-	this.result.get('cars').find({ driver_guid: car_info.driver_guid }).assign(car_info).value();
+	//this.result.get('cars').find({ driver_guid: car_info.driver_guid }).assign({ 'incident': car_info.incident }).value();
 	this.result.write();
 }
 

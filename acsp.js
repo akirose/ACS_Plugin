@@ -1,14 +1,10 @@
 const dgram = require('dgram');
-const Iconv = require('iconv').Iconv;
 const EventEmitter = require('events').EventEmitter;
 const BufferReader = require('buffer-reader');
 const util = require('util');
 const Promise = require('bluebird');
 const PromiseQueue = require('promise-queue');
 PromiseQueue.configure(Promise);
-
-const encoder = new Iconv('UTF-8', 'UTF-32LE');
-const decoder = new Iconv('UTF-32LE', 'UTF-8');
 
 function ACSP(options) {
 	var self = this;
@@ -364,8 +360,11 @@ ACSP.prototype.writeStringW = function(str) {
     
     if (str.length > 0) {
         // Hacky method that ignores half the UTF-32 space
-        encoder.convert(str).copy(buf, 1, 0);
+        //encoder.convert(str).copy(buf, 1, 0);
+        buf.write(str.split('').join('\u0000') + '\u0000', 1, str.length * 4, 'utf-16le');
     }
+
+    console.log(buf.toString('hex'));
 
     return buf;
 }
@@ -381,8 +380,8 @@ ACSP.prototype.readStringW = function(buf) {
 	var length = buf.nextUInt8();
 	var strBuf = buf.nextBuffer(length*4);
 
-	//return strBuf.toString('utf-16le').replace(/\u0000/gi, '');
-	return decoder.convert(strBuf).toString();
+	return strBuf.toString('utf-16le').replace(/\u0000/gi, '');
+	//return decoder.convert(strBuf).toString();
 }
 
 ACSP.prototype.readVector3f = function (buf){
