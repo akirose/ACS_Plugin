@@ -197,9 +197,8 @@ plugin.prototype._init_car = function(car_info) {
 	var car_count = this.result.get('cars').filter(_f).size().value();
 	if(car_count === 0) {
 		this.result.get('cars').push(_.cloneDeep(info)).value();
-	} else {
-		this.cars[info.car_id] = this.result.get('cars').find(_f).value();
 	}
+	this.cars[info.car_id] = this.result.get('cars').find(_f).value();	
 }
 
 // New client connected.

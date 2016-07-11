@@ -27,7 +27,7 @@ function result(file) {
 				first = record;
 			}
 
-			console.log(sprintf('%16s\t%12s\t%12s\t%12s\t%2d', record.driver_name, moment.duration(record.bestlap).format('h[:]mm:ss.SSS'), gap, moment.duration(record.rtime).format('h[:]mm:ss.SSS'), record.rlaps));
+			console.log(sprintf('%16s\t%12s\t%12s\t%12s\t%2d\t%2d\t%3d', record.driver_name, moment.duration(record.bestlap).format('h[:]mm:ss.SSS'), gap, moment.duration(record.rtime).format('h[:]mm:ss.SSS'), record.rlaps, record.incident, record.ballast));
 		}).value();
 	} else {
 		var records = raw.get('cars').orderBy(['rtime'], ['desc']).forEach(function(record, key) {

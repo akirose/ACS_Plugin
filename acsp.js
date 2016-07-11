@@ -364,8 +364,6 @@ ACSP.prototype.writeStringW = function(str) {
         buf.write(str.split('').join('\u0000') + '\u0000', 1, str.length * 4, 'utf-16le');
     }
 
-    console.log(buf.toString('hex'));
-
     return buf;
 }
 

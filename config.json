@@ -6,7 +6,7 @@
       "server_host": "localhost",
       "server_port": 11000,
       "listen_port": 12000,
-      "welcome_message": "sasdasdasda"
+      "welcome_message": "Test Server!"
     },
     {
       "server_host": "localhost",
