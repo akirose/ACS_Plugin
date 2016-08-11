@@ -292,7 +292,8 @@ ACSP.prototype._handleMessage = function(buf, rinfo) {
 				lapinfo.leaderboard.push({
 					rcar_id: buf.nextUInt8(),
 					rtime: buf.nextUInt32LE(),
-					rlaps: buf.nextUInt16LE()
+					rlaps: buf.nextUInt16LE(),
+					complete_flag: buf.nextUInt8()
 				});
 			}
 			lapinfo.grip_level = buf.nextFloatLE();
